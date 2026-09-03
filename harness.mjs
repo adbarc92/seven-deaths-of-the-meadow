@@ -53,3 +53,31 @@ export function goto(T, id) {
   T.run.x = s.x; T.run.y = s.y;
   return s;
 }
+
+// Step the simulation. dt is clamped to 0.05 in the game, so stay at or under.
+export function tick(T, dt = 0.05, n = 1) { for (let i = 0; i < n; i++) T.update(dt) }
+
+// Stand at a site. Movement is covered by its own test; everywhere else the
+// walk is not what is under test.
+export function at(T, id) {
+  const s = T.SITES.find(s => s.id === id);
+  if (!s) throw new Error('no site ' + id);
+  T.run.x = s.x; T.run.y = s.y; T.run.in = '';
+  return s;
+}
+
+// Walk there for real, with the movement keys, and report the seconds taken.
+export function walk(T, x, y, limit = 40) {
+  let t = 0;
+  const k = T.keys;
+  for (; t < limit; t += 0.05) {
+    const dx = x - T.run.x, dy = y - T.run.y;
+    if (Math.hypot(dx, dy) < 3) break;
+    k.d = dx > 1 ? 1 : 0; k.a = dx < -1 ? 1 : 0;
+    k.s = dy > 1 ? 1 : 0; k.w = dy < -1 ? 1 : 0;
+    T.update(0.05);
+    if (T.run.dead) break;
+  }
+  k.d = k.a = k.s = k.w = 0;
+  return t;
+}

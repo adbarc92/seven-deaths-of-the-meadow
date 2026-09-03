@@ -20,6 +20,9 @@ const c = document.getElementById('c'), X = c.getContext('2d');
 const HUES = ['#ff5b6e','#ffa24b','#ffe066','#7ddb8f','#6fc4ff','#9a8cff','#d98cff'];
 const BANDS = ['red','orange','yellow','green','blue','indigo','violet'];
 const HOLD = 0.5;              // seconds to register a hold instead of a tap
+// Shown under the title on the ending. CONTENT.md s4 allows a title and an
+// author line and nothing else. Set it to your name before submitting.
+const AUTHOR = '';
 
 // The soft clock. Noon and dusk are positions on it, which is what makes the
 // yellow puzzle work; dark closing the meadow is the second ambient death.
@@ -440,6 +443,10 @@ function ending() {
   HUES.forEach((h, i) => g.addColorStop(i / 6, h));
   X.fillStyle = g; X.font = '8px sans-serif';
   X.fillText('SEVEN DEATHS OF THE MEADOW', 160, 292);
+  if (AUTHOR) {
+    X.fillStyle = '#6a6075'; X.font = '6px sans-serif';
+    X.fillText(AUTHOR, 160, 304);
+  }
 }
 
 function journal() {

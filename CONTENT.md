@@ -81,6 +81,12 @@ six words and nothing else in the game ever mentions the controls.
 | hold at dusk, yellow already set | Under the tallest face, written small, there is a name. You do not say it yet. → **sets `trueName`** |
 | journal | They turn toward the brightest thing. |
 | journal | At noon nothing outshines the ring. |
+| journal | Under the tallest face, a name, written small. |
+
+The third journal line is written against section 1 rather than quoted from
+the original draft: without it the one replay hook in the game is left to the
+player's memory, which is the exact failure section 3 says the journal exists
+to prevent. Ten words, observational, no causation.
 
 The second dusk visit is the only optional content in the game and the only
 route to the second ending. It is deliberately gated on *going back to a place

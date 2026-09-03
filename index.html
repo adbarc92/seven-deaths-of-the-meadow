@@ -5,102 +5,209 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
 <title>Seven Deaths of the Meadow</title>
 <style>
-html,body{margin:0;height:100%;background:#120f18;overflow:hidden}
+html,body{margin:0;height:100%;background:#120f18;overflow:hidden;touch-action:none}
 canvas{display:block;width:100%;height:100%}
 </style>
 </head>
 <body>
 <canvas id=c></canvas>
 <script>
-// Seven Deaths of the Meadow - js13k 2026 vertical slice
+// Seven Deaths of the Meadow - js13k 2026
 // Logical space is 320x320, letterboxed. Everything drawn, no assets.
+// DESIGN.md is the authority; CONTENT.md owns every string below.
 
 const c = document.getElementById('c'), X = c.getContext('2d');
 const HUES = ['#ff5b6e','#ffa24b','#ffe066','#7ddb8f','#6fc4ff','#9a8cff','#d98cff'];
 const BANDS = ['red','orange','yellow','green','blue','indigo','violet'];
-const HOLD = 0.5; // seconds to register a hold instead of a tap
+const HOLD = 0.5;              // seconds to register a hold instead of a tap
+
+// The soft clock. Noon and dusk are positions on it, which is what makes the
+// yellow puzzle work; dark closing the meadow is the second ambient death.
+const DUSK = 32, DARK = 70, CLOSE = 88;
+// per ART.md s3: one translucent fill over the playfield, plus flower alpha
+const TIME = [[0,.75],['rgba(90,60,110,.28)',.45],['rgba(18,15,24,.72)',.15]];
 
 // ---------- state ----------
 // meta survives death. run does not. That boundary is the whole game.
+// trueName lives on run on purpose: knowing the name is the player's, but
+// fetching it has to happen inside the run that spends it. (DESIGN.md s5)
 let meta = { journal: [], deaths: 0 };
-let run;
+let run, scene = 0;            // 0 title, 1 meadow, 2 ending
 
 function newRun() {
-  run = { x: 160, y: 250, bands: {}, berry: false, dead: null, t: 0 };
+  run = { x: 160, y: 272, bands: {}, berry: 0, name: 0, foal: 0, fx: 200, fy: 170,
+          t: 0, dead: 0, end: 0, in: '' };
+  for (const k in keys) keys[k] = 0;
+  holdT = 0; fired = 0; msg = ''; msgT = 0;
 }
 
-function note(s) { if (!meta.journal.includes(s)) meta.journal.push(s); }
-function die(s) { run.dead = s; meta.deaths++; return s; }
+const note = s => { if (!meta.journal.includes(s)) meta.journal.push(s) };
+const die = s => { if (!run.dead) { run.dead = s; meta.deaths++ } return run.dead };
+const phase = () => run.t < DUSK ? 0 : run.t < DARK ? 1 : 2;
+const setBands = () => BANDS.reduce((n, b) => n + (run.bands[b] ? 1 : 0), 0);
+
+// The foal follows you into whatever you touch next, and the meadow charges
+// the same price twice. Applies to every site but the pond.
+const FOALDEATH = 'The foal followed you into it. The meadow charges the same price twice.';
 
 // ---------- sites ----------
 // Hardcoded on purpose. Five of these is fewer than the abstraction that
 // would describe them. See DESIGN.md section 9.
 const SITES = [
   {
-    id: 'stone', x: 160, y: 258, r: 20, label: 'the wake stone',
-    tap: 'read', hold: 'read aloud',
-    act(held) {
+    id: 'stone', x: 160, y: 262, r: 16, tap: 'read', hold: 'read aloud',
+    act() {
       note('The stone is carved: GIVE, DO NOT TAKE.');
-      if (!run.bands.indigo) {
-        run.bands.indigo = 1;
-        return 'You read the carving aloud. Somewhere behind the light, something agrees.';
-      }
-      return 'The same six words. They have not changed.';
+      if (run.bands.indigo) return 'The same six words. They have not changed.';
+      run.bands.indigo = 1;
+      return 'You read the carving aloud. Somewhere behind the light, something agrees.';
     }
   },
   {
-    id: 'bramble', x: 160, y: 108, r: 30, label: 'the bramble',
-    tap: 'reach in', hold: 'press a thorn',
+    id: 'bramble', x: 58, y: 214, r: 24, tap: 'reach in', hold: 'press a thorn',
     act(held) {
       if (!held) return die('You reached in openhanded. The bramble took the whole arm as an offer.');
       if (run.bands.red) return die('The bramble drank twice. It only ever wanted once.');
-      run.bands.red = 1;
-      run.berry = true;
+      run.bands.red = 1; run.berry = 1;
       note('The bramble drinks. One thorn was enough.');
       return 'You press a single thorn until it drinks. A red berry falls loose into your hand.';
     }
+  },
+  {
+    id: 'hollow', x: 262, y: 210, r: 20, tap: 'take honey', hold: 'set something down',
+    act(held) {
+      if (!held) {
+        note('The hollow was already owed.');
+        return die('You took the honey. The hollow was already owed, and it collected.');
+      }
+      // no berry covers the repeat visit too - the debt is settled once
+      if (!run.berry) return die('You offered an empty hand. The hollow accepted the hand.');
+      run.bands.orange = 1; run.berry = 0;
+      note('Bees keep back from the berry.');
+      return 'You set the red berry down in the hollow. The bees draw back and let the comb go.';
+    }
+  },
+  {
+    id: 'ring', x: 72, y: 112, r: 30, tap: 'walk in', hold: 'walk the ring',
+    // standing in it at noon is the death; the verb never gets a chance
+    near() {
+      if (phase()) return;
+      note('They turn toward the brightest thing.');
+      die('Every face turned to you. For one moment you were the brightest thing in the meadow.');
+    },
+    act() {
+      if (!run.bands.yellow) {
+        run.bands.yellow = 1;
+        note('At noon nothing outshines the ring.');
+        return 'At dusk the faces are all turned down. You walk the ring unlit and unnoticed.';
+      }
+      // the only optional content in the game, and the only route to the
+      // second ending: coming back to a place after it stopped being dangerous
+      run.name = 1;
+      note('Under the tallest face, a name, written small.');
+      return 'Under the tallest face, written small, there is a name. You do not say it yet.';
+    }
+  },
+  {
+    id: 'pond', x: 250, y: 108, r: 26, tap: 'drink', hold: 'kneel',
+    act(held) {
+      if (!held) {
+        note('Reflections keep what they take.');
+        return die('You drank. The water kept the face that leaned over it, and did not give it back.');
+      }
+      if (run.foal) {
+        run.foal = 0; run.bands.green = 1;
+        note('It drank and was not taken.');
+        return 'The foal drinks where you could not, and is not taken. It looks at you until you understand it was never the one in danger.';
+      }
+      run.bands.blue = 1;
+      note('The pond only takes what it can see.');
+      return 'You kneel with your eyes shut until the surface forgets you. It hands up a blue reflected off nothing.';
+    }
+  },
+  {
+    id: 'gate', x: 160, y: 60, r: 22, tap: 'enter', hold: 'speak',
+    near() {
+      if (setBands() < 6) return die('You stepped into the gate unfinished. It sorted you into the colors you had.');
+      if (run.bands.violet) return;
+      run.bands.violet = 1;
+      return 'The seventh band arrives on its own.';
+    },
+    act(held) { run.end = held && run.name ? 2 : 1; scene = 2 }
+  },
+  {
+    // Only in the meadow once the pond is solved, which is what makes green
+    // unattemptable before blue without ever refusing the player anything.
+    id: 'foal', x: 200, y: 170, r: 14, tap: 'touch', hold: 'wait',
+    near: () => follow(), act: () => follow()
   }
 ];
 
+function follow() {
+  if (run.foal) return '';
+  run.foal = 1;
+  note('The foal follows.');
+  return 'The foal falls in behind you. It does not seem to be deciding anything.';
+}
+
+const here = s => Math.hypot(s.x - run.x, s.y - run.y);
+const live = s => s.id != 'foal' || (run.bands.blue && !run.foal && !run.bands.green);
+
 function nearest() {
-  for (const s of SITES) if (Math.hypot(s.x - run.x, s.y - run.y) < s.r + 14) return s;
+  for (const s of SITES) if (live(s) && here(s) < s.r + 14) return s;
   return null;
 }
 
 // ---------- input ----------
 const keys = {};
-let holdT = 0, fired = false, msg = '', msgT = 0, showJournal = false;
+let holdT = 0, fired = 0, msg = '', msgT = 0, showJournal = 0;
+
+function anyKey() {
+  if (scene == 2) { scene = 0; return 1 }
+  if (scene == 0) { scene = 1; newRun(); return 1 }
+  if (run.dead) { newRun(); return 1 }
+  return 0;
+}
 
 onkeydown = e => {
   const k = e.key.toLowerCase();
-  if (run.dead) { newRun(); return; }
-  if (k === 'j') showJournal = !showJournal;
+  if (anyKey()) return;
+  if (k == 'j') showJournal ^= 1;
   keys[k] = 1;
 };
 onkeyup = e => {
   const k = e.key.toLowerCase();
-  if (k === 'e' || k === ' ') {
-    const s = nearest();
-    if (s && !fired && holdT > 0) { msg = s.act(false); msgT = 4; }
-    holdT = 0; fired = false;
-  }
+  if ((k == 'e' || k == ' ') && !fired && holdT > 0) release();
   keys[k] = 0;
 };
+
+// A tap is a completed press that never reached the hold threshold.
+function release() {
+  const s = nearest();
+  holdT = 0; fired = 0;
+  if (s) act(s, 0);
+}
+
+// One dispatcher so the foal rule cannot be forgotten at a call site.
+function act(s, held) {
+  if (run.foal && s.id != 'pond') { msg = die(FOALDEATH); msgT = 5; return }
+  msg = s.act(held) || ''; msgT = 5;
+}
 
 // ---------- scenery ----------
 // Deterministic so the flowers don't shimmer between frames or runs.
 const flowers = (() => {
   let s = 1337, r = () => (s = s * 16807 % 2147483647) / 2147483647;
   return Array.from({ length: 90 }, () => ({
-    x: r() * 320, y: 60 + r() * 250, h: HUES[(r() * 7) | 0], s: 1 + r() * 1.6
+    x: r() * 320, y: 60 + r() * 252, h: HUES[(r() * 7) | 0], s: 1 + r() * 1.6
   }));
 })();
 
 // ---------- loop ----------
 let last = 0;
 function frame(now) {
-  const dt = Math.min(0.05, (now - last) / 1000); last = now;
-  if (!run.dead) update(dt);
+  const dt = Math.min(.05, (now - last) / 1000); last = now;
+  if (scene == 1 && !run.dead) update(dt);
   draw();
   requestAnimationFrame(frame);
 }
@@ -108,23 +215,39 @@ function frame(now) {
 function update(dt) {
   run.t += dt;
   if (msgT > 0) msgT -= dt;
+  if (run.t > CLOSE) { die('Dark. The meadow closes the way a hand closes.'); return }
 
   const sp = 68 * dt;
-  if (keys.a || keys.arrowleft) run.x -= sp;
-  if (keys.d || keys.arrowright) run.x += sp;
-  if (keys.w || keys.arrowup) run.y -= sp;
-  if (keys.s || keys.arrowdown) run.y += sp;
-  run.x = Math.max(10, Math.min(310, run.x));
-  run.y = Math.max(50, Math.min(310, run.y));
+  const mx = (keys.d || keys.arrowright ? 1 : 0) - (keys.a || keys.arrowleft ? 1 : 0);
+  const my = (keys.s || keys.arrowdown ? 1 : 0) - (keys.w || keys.arrowup ? 1 : 0);
+  run.x = Math.max(10, Math.min(310, run.x + mx * sp));
+  run.y = Math.max(50, Math.min(310, run.y + my * sp));
+
+  // the foal trails rather than snapping, so it reads as following
+  if (run.foal) {
+    const f = Math.min(1, dt * 2.4);
+    run.fx += (run.x - run.fx) * f;
+    run.fy += (run.y + 13 - run.fy) * f;
+  }
+  SITES[6].x = run.fx; SITES[6].y = run.fy;
+
+  // ambient triggers fire on entering the site proper, not the prompt ring
+  let a = null;
+  for (const s of SITES) if (s.near && live(s) && here(s) < s.r) { a = s; break }
+  if (a) {
+    if (run.in != a.id) {
+      run.in = a.id;
+      if (run.foal && a.id != 'pond') { msg = die(FOALDEATH); msgT = 5 }
+      else { const m = a.near(); if (m) { msg = m; msgT = 5 } }
+    }
+  } else run.in = '';
+  if (run.dead) return;
 
   const site = nearest();
-  const down = keys.e || keys[' '];
-  if (down && site) {
+  if ((keys.e || keys[' ']) && site) {
     holdT += dt;
-    if (holdT >= HOLD && !fired) { fired = true; msg = site.act(true); msgT = 4; }
-  } else if (!down) {
-    holdT = 0; fired = false;
-  }
+    if (holdT >= HOLD && !fired) { fired = 1; act(site, 1) }
+  } else if (!keys.e && !keys[' ']) { holdT = 0; fired = 0 }
 }
 
 // ---------- draw ----------
@@ -135,8 +258,18 @@ function draw() {
   X.save();
   X.translate((c.width - 320 * S) / 2, (c.height - 320 * S) / 2);
   X.scale(S, S);
+  X.textAlign = 'center';
 
-  // meadow
+  if (scene == 0) title();
+  else if (scene == 2) ending();
+  else meadow();
+
+  X.restore();
+}
+
+function meadow() {
+  const [tint, fa] = TIME[phase()];
+
   const g = X.createLinearGradient(0, 40, 0, 320);
   g.addColorStop(0, '#cfeecb'); g.addColorStop(1, '#8fc79a');
   X.fillStyle = g; X.fillRect(0, 40, 320, 280);
@@ -144,24 +277,30 @@ function draw() {
   sky.addColorStop(0, '#ffe9f3'); sky.addColorStop(1, '#cfeecb');
   X.fillStyle = sky; X.fillRect(0, 0, 320, 60);
 
+  X.globalAlpha = fa;
   for (const f of flowers) {
-    X.fillStyle = f.h; X.globalAlpha = .75;
+    X.fillStyle = f.h;
     X.beginPath(); X.arc(f.x, f.y, f.s, 0, 7); X.fill();
   }
   X.globalAlpha = 1;
 
-  drawStone(160, 258);
-  drawBramble(160, 108);
-  drawUnicorn(run.x, run.y);
-  drawRainbow();
+  drawGate(160, 60);
+  drawRing(72, 112);
+  drawPond(250, 108);
+  drawBramble(58, 214);
+  drawHollow(262, 210);
+  drawStone(160, 262);
+  if (run.bands.blue) drawUnicorn(run.fx, run.fy, .62, 0);
+  drawUnicorn(run.x, run.y, 1, 1);
 
-  // interaction prompt + hold ring
+  if (tint) { X.fillStyle = tint; X.fillRect(0, 0, 320, 320) }
+
+  hud();
   const site = run.dead ? null : nearest();
   if (site) {
-    X.fillStyle = 'rgba(30,20,40,.72)';
-    X.fillRect(20, 292, 280, 20);
-    X.fillStyle = '#fff'; X.font = '7px sans-serif'; X.textAlign = 'center';
-    X.fillText(`[E] ${site.tap}   ·   [hold E] ${site.hold}`, 160, 305);
+    X.fillStyle = 'rgba(30,20,40,.72)'; X.fillRect(20, 292, 280, 20);
+    X.fillStyle = '#fff'; X.font = '7px sans-serif';
+    X.fillText('[E] ' + site.tap + '   ·   [hold E] ' + site.hold, 160, 305);
     if (holdT > 0) {
       X.strokeStyle = '#fff'; X.lineWidth = 2;
       X.beginPath();
@@ -170,52 +309,97 @@ function draw() {
     }
   }
 
-  if (msgT > 0 && !run.dead) wrap(msg, 160, 40, '#3a2a45');
+  if (msgT > 0 && !run.dead) {
+    X.fillStyle = 'rgba(30,20,40,.62)';
+    X.fillRect(16, 32, 288, 8 + 11 * lines(msg, 258, 8));
+    wrap(msg, 160, 44, '#fff', 8, 258);
+  }
   if (run.dead) {
     X.fillStyle = 'rgba(18,15,24,.82)'; X.fillRect(0, 0, 320, 320);
-    wrap(run.dead, 160, 148, '#ffdce3');
+    wrap(run.dead, 160, 148, '#ffdce3', 8, 250);
     X.fillStyle = '#8a7f95'; X.font = '6px sans-serif';
     X.fillText('any key', 160, 200);
   }
-  if (showJournal) drawJournal();
-
-  X.restore();
+  if (showJournal) journal();
 }
 
-function wrap(text, cx, y, col) {
-  X.fillStyle = col; X.font = '8px sans-serif'; X.textAlign = 'center';
-  let line = '', ly = y;
-  for (const w of text.split(' ')) {
-    if (X.measureText(line + w).width > 250) { X.fillText(line, cx, ly); ly += 11; line = ''; }
-    line += w + ' ';
-  }
-  X.fillText(line, cx, ly);
-}
-
-function drawRainbow() {
-  // The gate, seen from anywhere. Unset bands are grey.
+function hud() {
+  // Position-coded, never hue-coded: band i always occupies slot i. (ART.md s1)
   for (let i = 0; i < 7; i++) {
     X.fillStyle = run.bands[BANDS[i]] ? HUES[i] : 'rgba(255,255,255,.18)';
     X.fillRect(96 + i * 18, 10, 15, 4);
   }
-  X.fillStyle = 'rgba(60,40,70,.5)'; X.font = '6px sans-serif'; X.textAlign = 'center';
+  X.fillStyle = 'rgba(60,40,70,.5)'; X.font = '6px sans-serif';
   X.fillText(meta.deaths + ' deaths   ·   [J] what you remember', 160, 26);
 }
 
-function drawJournal() {
-  X.fillStyle = 'rgba(18,15,24,.92)'; X.fillRect(0, 0, 320, 320);
-  X.fillStyle = '#d98cff'; X.font = '8px sans-serif'; X.textAlign = 'left';
-  X.fillText('what you remember', 30, 50);
-  X.fillStyle = '#e8e0ee'; X.font = '7px sans-serif';
-  meta.journal.forEach((s, i) => X.fillText('- ' + s, 30, 70 + i * 13));
-  if (!meta.journal.length) { X.fillStyle = '#6a6075'; X.fillText('nothing yet.', 30, 70); }
+function title() {
+  X.fillStyle = '#1a1522'; X.fillRect(0, 0, 320, 320);
+  const g = X.createLinearGradient(60, 0, 260, 0);
+  HUES.forEach((h, i) => g.addColorStop(i / 6, h));
+  X.fillStyle = g; X.font = '13px sans-serif';
+  X.fillText('SEVEN DEATHS', 160, 130);
+  X.fillText('OF THE MEADOW', 160, 148);
+  X.fillStyle = '#8a7f95'; X.font = '7px sans-serif';
+  X.fillText('it is a nice day. any key.', 160, 186);
 }
 
+function ending() {
+  X.fillStyle = '#1a1522'; X.fillRect(0, 0, 320, 320);
+  const t = run.end == 2
+    ? 'You say the name written under the tallest face.\nSeven colors come apart into one.\nThe thing on the other side was never a unicorn. It was something divided seven ways a long time ago, and every rule you learned was it asking, politely, to be put back together.\nIt does not need the meadow now.\nNeither, it turns out, do you.'
+    : 'The unicorn takes the six colors and gives you the seventh.\nYou leave the meadow whole, having paid nothing you were not asked for.\nIt watches you the entire way out. It does not look away.';
+  wrap(t, 160, 96, '#e8e0ee', 7, 250);
+  const g = X.createLinearGradient(90, 0, 230, 0);
+  HUES.forEach((h, i) => g.addColorStop(i / 6, h));
+  X.fillStyle = g; X.font = '8px sans-serif';
+  X.fillText('SEVEN DEATHS OF THE MEADOW', 160, 292);
+}
+
+function journal() {
+  X.fillStyle = 'rgba(18,15,24,.94)'; X.fillRect(0, 0, 320, 320);
+  X.textAlign = 'left';
+  X.fillStyle = '#d98cff'; X.font = '8px sans-serif';
+  X.fillText('what you remember', 26, 46);
+  X.font = '7px sans-serif';
+  X.fillStyle = meta.journal.length ? '#e8e0ee' : '#6a6075';
+  if (!meta.journal.length) X.fillText('nothing yet.', 26, 66);
+  meta.journal.forEach((s, i) => X.fillText('· ' + s, 26, 66 + i * 13));
+  X.textAlign = 'center';
+}
+
+// ---------- text ----------
+// Splits on \n as a hard break, then greedily on width. Returns the lines so
+// callers can size a plate or centre a block.
+function layout(text, w, px) {
+  X.font = px + 'px sans-serif';
+  const out = [];
+  for (const para of text.split('\n')) {
+    let line = '';
+    for (const word of para.split(' ')) {
+      const t = line ? line + ' ' + word : word;
+      if (X.measureText(t).width > w && line) { out.push(line); line = word }
+      else line = t;
+    }
+    out.push(line);
+  }
+  return out;
+}
+const lines = (t, w, px) => layout(t, w, px).length;
+
+function wrap(text, cx, y, col, px, w) {
+  X.fillStyle = col;
+  layout(text, w, px).forEach((l, i) => X.fillText(l, cx, y + i * (px + 3)));
+}
+
+// ---------- sites, drawn ----------
 function drawStone(x, y) {
   X.fillStyle = '#9a94a8';
   X.beginPath(); X.ellipse(x, y, 13, 9, 0, 0, 7); X.fill();
   X.strokeStyle = '#6d6679'; X.lineWidth = .7;
-  for (let i = 0; i < 3; i++) { X.beginPath(); X.moveTo(x - 7, y - 2 + i * 3); X.lineTo(x + 7, y - 2 + i * 3); X.stroke(); }
+  for (let i = 0; i < 3; i++) {
+    X.beginPath(); X.moveTo(x - 7, y - 2 + i * 3); X.lineTo(x + 7, y - 2 + i * 3); X.stroke();
+  }
 }
 
 function drawBramble(x, y) {
@@ -231,10 +415,82 @@ function drawBramble(x, y) {
   }
 }
 
-function drawUnicorn(x, y) {
+function drawHollow(x, y) {
+  X.fillStyle = '#b6a9bd';
+  X.beginPath(); X.ellipse(x, y, 15, 17, 0, 0, 7); X.fill();
+  X.fillStyle = '#4a3b57';                       // the dark opening
+  X.beginPath(); X.ellipse(x, y + 1, 7, 9, 0, 0, 7); X.fill();
+  X.fillStyle = '#ffe066';                       // bees, keeping their distance
+  for (let i = 0; i < 6; i++) {
+    const a = i * 1.05 + run.t;
+    X.beginPath(); X.arc(x + Math.cos(a) * 18, y + Math.sin(a * 1.3) * 15, 1, 0, 7); X.fill();
+  }
+}
+
+function drawRing(x, y) {
+  // Heads turn toward the brightest thing: the player at noon, the ground
+  // after. This is the whole yellow puzzle, stated without a word of text.
+  const noon = !phase();
+  for (let i = 0; i < 12; i++) {
+    const a = i * .524, sx = x + Math.cos(a) * 30, sy = y + Math.sin(a) * 24;
+    X.strokeStyle = '#7ddb8f'; X.lineWidth = 1.4;
+    X.beginPath(); X.moveTo(sx, sy + 9); X.lineTo(sx, sy - 6); X.stroke();
+    let dx = 0, dy = 3;
+    if (noon) {
+      const d = Math.hypot(run.x - sx, run.y - sy) || 1;
+      dx = (run.x - sx) / d * 2.4; dy = (run.y - sy) / d * 2.4;
+    }
+    X.fillStyle = '#ffe066';
+    X.beginPath(); X.arc(sx + dx, sy - 6 + dy, 3.4, 0, 7); X.fill();
+    X.fillStyle = '#8a6b3f';
+    X.beginPath(); X.arc(sx + dx, sy - 6 + dy, 1.5, 0, 7); X.fill();
+  }
+}
+
+function drawPond(x, y) {
+  const g = X.createLinearGradient(0, y - 16, 0, y + 16);
+  g.addColorStop(0, '#6fc4ff'); g.addColorStop(1, '#9a8cff');
+  X.fillStyle = g;
+  X.beginPath(); X.ellipse(x, y, 26, 16, 0, 0, 7); X.fill();
+  X.strokeStyle = 'rgba(255,255,255,.5)'; X.lineWidth = .7;
+  for (let i = 0; i < 3; i++) {
+    X.beginPath(); X.ellipse(x, y + 2 + i * 4, 15 - i * 4, 3, 0, 0, 7); X.stroke();
+  }
+}
+
+function drawGate(x, y) {
+  const g = X.createLinearGradient(x - 18, 0, x + 18, 0);
+  HUES.forEach((h, i) => g.addColorStop(i / 6, h));
+  X.strokeStyle = g; X.lineWidth = 3.4;
+  X.globalAlpha = .3 + .6 * setBands() / 7;
+  X.beginPath();
+  X.moveTo(x - 17, y + 24); X.lineTo(x - 17, y);
+  X.arc(x, y, 17, Math.PI, 0, true);
+  X.lineTo(x + 17, y + 24);
+  X.stroke();
+  X.globalAlpha = 1;
+}
+
+// ---------- the unicorn ----------
+// The foal is the same construction at 0.62 scale with no horn. The
+// resemblance is the point. (ART.md s6)
+function drawUnicorn(x, y, k, horn) {
+  const moving = keys.a || keys.d || keys.w || keys.s ||
+    keys.arrowleft || keys.arrowright || keys.arrowup || keys.arrowdown;
+  if (horn && moving) y += Math.sin(run.t * 11) * .8;
+  X.strokeStyle = '#fffaff'; X.lineWidth = 1.6 * k; X.lineCap = 'round';
+  for (let i = 0; i < 4; i++) {
+    const lx = x + (i < 2 ? -3 : 3) * k, ly = y + 3 * k;
+    X.beginPath(); X.moveTo(lx, ly); X.lineTo(lx + (i % 2 ? 1 : -1) * k, ly + 4.5 * k); X.stroke();
+  }
   X.fillStyle = '#fffaff';
-  X.beginPath(); X.ellipse(x, y, 6, 4.5, 0, 0, 7); X.fill();
-  X.beginPath(); X.ellipse(x, y - 6, 3.4, 3.4, 0, 0, 7); X.fill();
+  X.beginPath(); X.ellipse(x, y, 6 * k, 4.5 * k, 0, 0, 7); X.fill();
+  X.beginPath(); X.ellipse(x, y - 6 * k, 3.4 * k, 3.4 * k, 0, 0, 7); X.fill();
+  X.strokeStyle = '#f2d9ea'; X.lineWidth = 1.2 * k;   // mane and tail
+  X.beginPath(); X.moveTo(x + 2 * k, y - 7 * k); X.lineTo(x + 4.5 * k, y - 1 * k); X.stroke();
+  X.beginPath(); X.moveTo(x + 5.5 * k, y - 1 * k); X.lineTo(x + 8 * k, y + 3 * k); X.stroke();
+  if (!horn) return;
+  // the only place the full palette touches the player
   const hg = X.createLinearGradient(x, y - 15, x, y - 8);
   hg.addColorStop(0, '#d98cff'); hg.addColorStop(1, '#ffe066');
   X.fillStyle = hg;
@@ -243,34 +499,31 @@ function drawUnicorn(x, y) {
 
 /*TEST*/
 // ---------- harness hooks ----------
-// Handles for test.mjs to drive the game headlessly. Stripped from the
+// Handles for game.test.mjs to drive the game headlessly. Stripped from the
 // shipped bundle by the /*TEST*/ fence, so these cost zero bytes.
 globalThis.__T = {
-  SITES, newRun, nearest, update, selfTest, keys,
+  SITES, BANDS, HUES, newRun, nearest, update, act, keys, follow, selfTest,
+  DUSK, DARK, CLOSE, HOLD, setBands, phase, layout, draw,
   get run() { return run }, get meta() { return meta },
-  get msg() { return msg }, setMsg(v) { msg = v }
+  get msg() { return msg }, get scene() { return scene }, setScene(v) { scene = v },
 };
 
 // ---------- self-check ----------
-// The only non-trivial logic here is the site state machine. One runnable
-// check, per ponytail. Open index.html?test to run it.
+// One runnable check of the site state machine. Open index.html?test.
 function selfTest() {
-  const fails = [], ok = (cond, m) => { if (!cond) fails.push(m); };
-  const bramble = SITES[1], stone = SITES[0];
+  const fails = [], ok = (cond, m) => { if (!cond) fails.push(m) };
+  const S = id => SITES.find(s => s.id == id);
 
-  newRun();
-  bramble.act(false);
+  newRun(); S('bramble').act(0);
   ok(run.dead, 'tap on bramble should kill');
 
-  newRun();
-  bramble.act(true);
-  ok(run.bands.red && run.berry && !run.dead, 'first hold should set red + berry, not kill');
-  bramble.act(true);
+  newRun(); S('bramble').act(1);
+  ok(run.bands.red && run.berry && !run.dead, 'first hold sets red + berry');
+  S('bramble').act(1);
   ok(run.dead, 'second hold should kill');
 
-  newRun();
-  stone.act(false);
-  ok(run.bands.indigo, 'stone should set indigo');
+  newRun(); S('stone').act(0);
+  ok(run.bands.indigo, 'stone sets indigo');
 
   newRun();
   ok(!run.bands.red && !run.berry, 'run state must not survive newRun');
@@ -280,7 +533,6 @@ function selfTest() {
   console.log(fails.length ? fails : 'all checks pass');
   return fails;
 }
-
 if (location.search.includes('test')) selfTest();
 /*ENDTEST*/
 

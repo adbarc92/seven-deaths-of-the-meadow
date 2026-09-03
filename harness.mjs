@@ -36,7 +36,18 @@ export function load(search = '') {
     innerWidth: 800, innerHeight: 600, devicePixelRatio: 1,
     requestAnimationFrame: () => 0,   // the real loop never starts; tests step manually
     console, Math, Date, performance: { now: () => 0 },
-    addEventListener() {},
+    addEventListener() {}, setTimeout: (f) => (f(), 0),
+    // Records every tone the game asks for, so audio can be asserted on.
+    AudioContext: function () {
+      this.currentTime = 0;
+      this.destination = {};
+      this.createGain = () => ({ gain: { setValueAtTime() {}, exponentialRampToValueAtTime() {} }, connect() {} });
+      this.createOscillator = () => ({
+        frequency: {}, connect() {},
+        start() {}, stop() {},
+        set type(v) { }, get type() { return '' },
+      });
+    },
   };
   ctx.window = ctx; ctx.globalThis = ctx;
   vm.createContext(ctx);

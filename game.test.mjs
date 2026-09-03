@@ -208,6 +208,70 @@ group('layout');
   ok(T.nearest() && T.nearest().id === 'stone', 'you wake within reach of the stone');
 }
 
+// ---------- input ----------
+group('input');
+{
+  const T = load();
+  const key = (k, repeat) => T.onkeydown({ key: k, repeat, preventDefault() {} });
+
+  T.setScene(0); key('x');
+  ok(T.scene === 1, 'any key leaves the title');
+
+  begin(T); T.run.dead = 'x'; key('j');
+  ok(!T.run.dead, 'any key respawns, including J');
+
+  begin(T);
+  ok(!T.journalOpen, 'the journal starts closed');
+  key('j'); ok(T.journalOpen, 'J opens the journal');
+  key('j', 1);   // odd count: an unguarded repeat would toggle it shut
+  ok(T.journalOpen, 'auto-repeat does not strobe the journal');
+  key('j', 1); key('j', 1); key('j', 1);
+  ok(T.journalOpen, 'held J stays open however long it repeats');
+  key('j'); ok(!T.journalOpen, 'J closes it again');
+
+  // The clock is a resource, so reading costs time - but you stand still.
+  begin(T); T.setJournal(1);
+  T.keys.d = 1;
+  const x = T.run.x, t0 = T.run.t;
+  tick(T, 0.05, 10);
+  ok(T.run.x === x, 'you do not walk while reading the journal');
+  ok(T.run.t > t0, 'the clock keeps running while reading');
+  T.keys.d = 0; T.setJournal(0);
+
+  // Drag walks, a press that has not travelled is the verb.
+  begin(T);
+  const start = T.run.x;
+  T.setTouch({ x: 100, y: 100, dx: 40, dy: 0, moved: 1 });
+  tick(T, 0.05, 6);
+  ok(T.run.x > start + 10, 'dragging walks the unicorn');
+
+  begin(T); at(T, 'bramble');
+  T.setTouch({ x: 0, y: 0, dx: 0, dy: 0, moved: 0 });
+  tick(T, 0.05, Math.ceil(T.HOLD / 0.05) + 1);
+  ok(T.run.bands.red, 'a still press reaching the hold threshold gives the hold verb');
+
+  begin(T); at(T, 'bramble');
+  T.setTouch({ x: 0, y: 0, dx: 0, dy: 0, moved: 0 });
+  tick(T, 0.05, 2);
+  ok(!T.run.dead && !T.run.bands.red, 'a short still press has not fired either verb yet');
+}
+
+// ---------- audio ----------
+group('audio');
+{
+  const T = load();
+  let threw = '';
+  try {
+    begin(T);
+    T.act(at(T, 'stone'), 0);   // sets a band -> chime on the next tick
+    tick(T);
+    T.act(at(T, 'pond'), 0);    // death tone
+    const g = T.SITES.find(s => s.id === 'gate');
+    begin(T); T.run.name = 1; g.act(1);   // the ending arpeggio
+  } catch (e) { threw = e.message }
+  ok(!threw, 'audio never throws: ' + threw);
+}
+
 // ---------- prose rules (CONTENT.md s1) ----------
 group('prose');
 {
@@ -266,7 +330,11 @@ group('build');
 
   const out = readFileSync('dist/index.html', 'utf8');
   ok(/<\/script>/.test(out), 'shipped html closes its script tag');
-  ok(!/\/\*TEST\*\//.test(out) && !out.includes('__T'), 'self-checks are stripped from the bundle');
+  // Assert stripping against the unpacked candidate: roadroller's payload is
+  // arbitrary bytes and will match any short needle by chance.
+  const plain = readFileSync('dist/index.minify.html', 'utf8');
+  ok(!/\/\*TEST\*\//.test(plain) && !plain.includes('__T') && !plain.includes('selfTest'),
+    'self-checks are stripped from the bundle');
   ok(out.startsWith('<!DOCTYPE html>'), 'shipped html keeps the doctype (standards mode)');
   ok(!/https?:\/\//.test(out), 'no external references - the zip must run offline');
 }

@@ -1,11 +1,13 @@
-// Screenshots the real game in a real browser, from the built zip's HTML.
-//   node shots.mjs [outdir]
+// Screenshots the real game in a real browser, and smoke-tests the zip.
+//   node visual.test.mjs [outdir]
 // Dev-only: puppeteer-core drives the locally installed Chrome, nothing is
-// downloaded and nothing here ships. Exits non-zero on a console error, so
-// this doubles as a smoke test the headless harness cannot do.
+// downloaded and nothing here ships. Exits non-zero on a console error, a
+// failed pixel probe, or a shipped artifact that will not play.
 import puppeteer from 'puppeteer-core';
-import { existsSync, mkdirSync } from 'fs';
+import { execFileSync } from 'child_process';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
+import zlib from 'zlib';
 
 const OUT = process.argv[2] || 'shots';
 const CHROME = [
@@ -132,6 +134,71 @@ const checks = [
 for (const [good, name] of checks) {
   console.log((good ? '  ok   ' : '  FAIL ') + name);
   if (!good) errors.push('pixel: ' + name);
+}
+
+// ---------- the shipped artifact ----------
+// JS13K.md section 5: test the actual zip, extracted, opened as a local file.
+// The dev file is not the entry - minify, roadroller and the HTML rewrite all
+// sit between them, and none of that is exercised above.
+execFileSync('node', ['build.mjs'], { stdio: 'pipe' });
+const zip = readFileSync('game.zip');
+const nameLen = zip.readUInt16LE(26), extraLen = zip.readUInt16LE(28);
+const body = zip.subarray(30 + nameLen + extraLen, 30 + nameLen + extraLen + zip.readUInt32LE(18));
+const html = zlib.inflateRawSync(body).toString();
+writeFileSync(`${OUT}/shipped.html`, html);
+
+const ship = await browser.newPage();
+const shipErrors = [];
+ship.on('pageerror', e => shipErrors.push('pageerror: ' + e.message));
+ship.on('console', m => m.type() === 'error' && shipErrors.push('console: ' + m.text()));
+await ship.setViewport({ width: 640, height: 640 });
+await ship.goto('file:///' + resolve(OUT, 'shipped.html').replace(/\\/g, '/'));
+await new Promise(r => setTimeout(r, 400));
+
+// Average brightness cannot tell the title from the meadow any more - the
+// title draws over the meadow on purpose. The prompt bar can: it only exists
+// once you are playing, and you wake within reach of the stone.
+const meanBright = () => ship.evaluate(() => {
+  const g = document.getElementById('c').getContext('2d');
+  const d = g.getImageData(0, 0, innerWidth, innerHeight).data;
+  let s = 0, n = 0;
+  for (let i = 0; i < d.length; i += 4000) { s += d[i] + d[i + 1] + d[i + 2]; n += 3 }
+  return s / n;
+});
+const promptBar = () => ship.evaluate(() => {
+  const S = Math.min(innerWidth, innerHeight) / 320;
+  const ox = (innerWidth - 320 * S) / 2, oy = (innerHeight - 320 * S) / 2;
+  const g = document.getElementById('c').getContext('2d');
+  // x=40 is inside the plate but clear of the centred text, which is white
+  // and would read as bright meadow.
+  const d = g.getImageData((ox + 40 * S) | 0, (oy + 300 * S) | 0, 1, 1).data;
+  return (d[0] + d[1] + d[2]) / 3;
+});
+
+const titleBar = await promptBar();
+await ship.keyboard.press('x');                       // any key leaves the title
+await new Promise(r => setTimeout(r, 250));
+const playBar = await promptBar(), playBright = await meanBright();
+await ship.screenshot({ path: `${OUT}/12-shipped-meadow.png` });
+
+// Straight up from the wake stone is the gate, and the gate sorts you into
+// the colours you have. No timing to get right: hold up until y clamps.
+await ship.keyboard.down('ArrowUp');
+await new Promise(r => setTimeout(r, 4000));
+await ship.keyboard.up('ArrowUp');
+await new Promise(r => setTimeout(r, 250));
+const deadBright = await meanBright();
+await ship.screenshot({ path: `${OUT}/13-shipped-death.png` });
+
+checks.push(
+  [playBright > 12, 'the shipped zip renders something on load'],
+  [titleBar - playBar > 40, 'a key press leaves the title and the prompt bar appears'],
+  [deadBright < playBright - 25, 'walking into the gate unfinished kills, and the screen dims'],
+  [!shipErrors.length, 'the shipped bundle runs clean: ' + shipErrors.join(' | ')],
+);
+for (const [good, name] of checks.slice(3)) {
+  console.log((good ? '  ok   ' : '  FAIL ') + name);
+  if (!good) errors.push('shipped: ' + name);
 }
 
 await browser.close();

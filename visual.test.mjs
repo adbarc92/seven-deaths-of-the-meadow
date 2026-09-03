@@ -202,9 +202,51 @@ for (const [good, name] of checks.slice(3)) {
 }
 
 await browser.close();
+
+// ---------- Firefox ----------
+// JS13K.md section 5: test in Firefox as well, canvas text metrics differ
+// slightly. Every text block in the game is wrapped at runtime, so wider
+// metrics do not overflow horizontally - they add lines, and the block that
+// can run off the bottom is the true ending.
+const FIREFOX = ['C:/Program Files/Mozilla Firefox/firefox.exe'].find(existsSync);
+if (!FIREFOX) {
+  console.log('  skip Firefox: not installed');
+} else {
+  const ff = await puppeteer.launch({ browser: 'firefox', executablePath: FIREFOX, headless: true });
+  const fp = await ff.newPage();
+  const ffErrors = [];
+  fp.on('pageerror', e => ffErrors.push('pageerror: ' + e.message));
+  fp.on('console', m => m.type() === 'error' && ffErrors.push('console: ' + m.text()));
+  await fp.setViewport({ width: 640, height: 640 });
+  await fp.goto('file:///' + resolve('index.html').replace(/\\/g, '/'));
+  await fp.waitForFunction('!!window.__T');
+
+  const fit = await fp.evaluate(() => {
+    const T = window.__T;
+    T.setScene(2); T.run.end = 2; T.draw();
+    const t = 'You say the name written under the tallest face.\nSeven colors come apart into one.\nThe thing on the other side was never a unicorn. It was something divided seven ways a long time ago, and every rule you learned was it asking, politely, to be put back together.\nIt does not need the meadow now.\nNeither, it turns out, do you.';
+    const n = T.lines(t, 250, 7);
+    return { n, top: 150 - n * 5, bottom: 150 + n * 5 };
+  });
+  await fp.screenshot({ path: `${OUT}/14-firefox-ending.png` });
+  await fp.evaluate(() => { const T = window.__T; T.setScene(1); T.newRun(); T.draw() });
+  await fp.screenshot({ path: `${OUT}/15-firefox-meadow.png` });
+
+  const ffChecks = [
+    [!ffErrors.length, 'Firefox runs it clean: ' + ffErrors.join(' | ')],
+    [fit.top > 30, `the true ending clears the top in Firefox (${fit.n} lines)`],
+    [fit.bottom < 282, 'the true ending clears the title line in Firefox'],
+  ];
+  for (const [good, name] of ffChecks) {
+    console.log((good ? '  ok   ' : '  FAIL ') + name);
+    if (!good) errors.push('firefox: ' + name);
+  }
+  await ff.close();
+}
+
 if (errors.length) {
   console.error('FAILURES:');
   for (const e of errors) console.error('  ' + e);
   process.exit(1);
 }
-console.log('clean: no console errors, no page errors, pixel probes pass');
+console.log('clean: Chrome + Firefox, dev file and shipped zip, all probes pass');

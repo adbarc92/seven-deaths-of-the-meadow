@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<title>Seven Deaths of the Meadow</title>
+<style>
+html,body{margin:0;height:100%;background:#120f18;overflow:hidden}
+canvas{display:block;width:100%;height:100%}
+</style>
+</head>
+<body>
+<canvas id=c></canvas>
+<script>
+// Seven Deaths of the Meadow - js13k 2026 vertical slice
+// Logical space is 320x320, letterboxed. Everything drawn, no assets.
+
+const c = document.getElementById('c'), X = c.getContext('2d');
+const HUES = ['#ff5b6e','#ffa24b','#ffe066','#7ddb8f','#6fc4ff','#9a8cff','#d98cff'];
+const BANDS = ['red','orange','yellow','green','blue','indigo','violet'];
+const HOLD = 0.5; // seconds to register a hold instead of a tap
+
+// ---------- state ----------
+// meta survives death. run does not. That boundary is the whole game.
+let meta = { journal: [], deaths: 0 };
+let run;
+
+function newRun() {
+  run = { x: 160, y: 250, bands: {}, berry: false, dead: null, t: 0 };
+}
+
+function note(s) { if (!meta.journal.includes(s)) meta.journal.push(s); }
+function die(s) { run.dead = s; meta.deaths++; return s; }
+
+// ---------- sites ----------
+// Hardcoded on purpose. Five of these is fewer than the abstraction that
+// would describe them. See DESIGN.md section 9.
+const SITES = [
+  {
+    id: 'stone', x: 160, y: 258, r: 20, label: 'the wake stone',
+    tap: 'read', hold: 'read aloud',
+    act(held) {
+      note('The stone is carved: GIVE, DO NOT TAKE.');
+      if (!run.bands.indigo) {
+        run.bands.indigo = 1;
+        return 'You read the carving aloud. Somewhere behind the light, something agrees.';
+      }
+      return 'The same six words. They have not changed.';
+    }
+  },
+  {
+    id: 'bramble', x: 160, y: 108, r: 30, label: 'the bramble',
+    tap: 'reach in', hold: 'press a thorn',
+    act(held) {
+      if (!held) return die('You reached in openhanded. The bramble took the whole arm as an offer.');
+      if (run.bands.red) return die('The bramble drank twice. It only ever wanted once.');
+      run.bands.red = 1;
+      run.berry = true;
+      note('The bramble drinks. One thorn was enough.');
+      return 'You press a single thorn until it drinks. A red berry falls loose into your hand.';
+    }
+  }
+];
+
+function nearest() {
+  for (const s of SITES) if (Math.hypot(s.x - run.x, s.y - run.y) < s.r + 14) return s;
+  return null;
+}
+
+// ---------- input ----------
+const keys = {};
+let holdT = 0, fired = false, msg = '', msgT = 0, showJournal = false;
+
+onkeydown = e => {
+  const k = e.key.toLowerCase();
+  if (run.dead) { newRun(); return; }
+  if (k === 'j') showJournal = !showJournal;
+  keys[k] = 1;
+};
+onkeyup = e => {
+  const k = e.key.toLowerCase();
+  if (k === 'e' || k === ' ') {
+    const s = nearest();
+    if (s && !fired && holdT > 0) { msg = s.act(false); msgT = 4; }
+    holdT = 0; fired = false;
+  }
+  keys[k] = 0;
+};
+
+// ---------- scenery ----------
+// Deterministic so the flowers don't shimmer between frames or runs.
+const flowers = (() => {
+  let s = 1337, r = () => (s = s * 16807 % 2147483647) / 2147483647;
+  return Array.from({ length: 90 }, () => ({
+    x: r() * 320, y: 60 + r() * 250, h: HUES[(r() * 7) | 0], s: 1 + r() * 1.6
+  }));
+})();
+
+// ---------- loop ----------
+let last = 0;
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  if (!run.dead) update(dt);
+  draw();
+  requestAnimationFrame(frame);
+}
+
+function update(dt) {
+  run.t += dt;
+  if (msgT > 0) msgT -= dt;
+
+  const sp = 68 * dt;
+  if (keys.a || keys.arrowleft) run.x -= sp;
+  if (keys.d || keys.arrowright) run.x += sp;
+  if (keys.w || keys.arrowup) run.y -= sp;
+  if (keys.s || keys.arrowdown) run.y += sp;
+  run.x = Math.max(10, Math.min(310, run.x));
+  run.y = Math.max(50, Math.min(310, run.y));
+
+  const site = nearest();
+  const down = keys.e || keys[' '];
+  if (down && site) {
+    holdT += dt;
+    if (holdT >= HOLD && !fired) { fired = true; msg = site.act(true); msgT = 4; }
+  } else if (!down) {
+    holdT = 0; fired = false;
+  }
+}
+
+// ---------- draw ----------
+function draw() {
+  const S = Math.min(innerWidth, innerHeight) / 320;
+  c.width = innerWidth; c.height = innerHeight;
+  X.fillStyle = '#120f18'; X.fillRect(0, 0, c.width, c.height);
+  X.save();
+  X.translate((c.width - 320 * S) / 2, (c.height - 320 * S) / 2);
+  X.scale(S, S);
+
+  // meadow
+  const g = X.createLinearGradient(0, 40, 0, 320);
+  g.addColorStop(0, '#cfeecb'); g.addColorStop(1, '#8fc79a');
+  X.fillStyle = g; X.fillRect(0, 40, 320, 280);
+  const sky = X.createLinearGradient(0, 0, 0, 60);
+  sky.addColorStop(0, '#ffe9f3'); sky.addColorStop(1, '#cfeecb');
+  X.fillStyle = sky; X.fillRect(0, 0, 320, 60);
+
+  for (const f of flowers) {
+    X.fillStyle = f.h; X.globalAlpha = .75;
+    X.beginPath(); X.arc(f.x, f.y, f.s, 0, 7); X.fill();
+  }
+  X.globalAlpha = 1;
+
+  drawStone(160, 258);
+  drawBramble(160, 108);
+  drawUnicorn(run.x, run.y);
+  drawRainbow();
+
+  // interaction prompt + hold ring
+  const site = run.dead ? null : nearest();
+  if (site) {
+    X.fillStyle = 'rgba(30,20,40,.72)';
+    X.fillRect(20, 292, 280, 20);
+    X.fillStyle = '#fff'; X.font = '7px sans-serif'; X.textAlign = 'center';
+    X.fillText(`[E] ${site.tap}   ·   [hold E] ${site.hold}`, 160, 305);
+    if (holdT > 0) {
+      X.strokeStyle = '#fff'; X.lineWidth = 2;
+      X.beginPath();
+      X.arc(run.x, run.y - 18, 7, -1.57, -1.57 + 6.28 * Math.min(1, holdT / HOLD));
+      X.stroke();
+    }
+  }
+
+  if (msgT > 0 && !run.dead) wrap(msg, 160, 40, '#3a2a45');
+  if (run.dead) {
+    X.fillStyle = 'rgba(18,15,24,.82)'; X.fillRect(0, 0, 320, 320);
+    wrap(run.dead, 160, 148, '#ffdce3');
+    X.fillStyle = '#8a7f95'; X.font = '6px sans-serif';
+    X.fillText('any key', 160, 200);
+  }
+  if (showJournal) drawJournal();
+
+  X.restore();
+}
+
+function wrap(text, cx, y, col) {
+  X.fillStyle = col; X.font = '8px sans-serif'; X.textAlign = 'center';
+  let line = '', ly = y;
+  for (const w of text.split(' ')) {
+    if (X.measureText(line + w).width > 250) { X.fillText(line, cx, ly); ly += 11; line = ''; }
+    line += w + ' ';
+  }
+  X.fillText(line, cx, ly);
+}
+
+function drawRainbow() {
+  // The gate, seen from anywhere. Unset bands are grey.
+  for (let i = 0; i < 7; i++) {
+    X.fillStyle = run.bands[BANDS[i]] ? HUES[i] : 'rgba(255,255,255,.18)';
+    X.fillRect(96 + i * 18, 10, 15, 4);
+  }
+  X.fillStyle = 'rgba(60,40,70,.5)'; X.font = '6px sans-serif'; X.textAlign = 'center';
+  X.fillText(meta.deaths + ' deaths   ·   [J] what you remember', 160, 26);
+}
+
+function drawJournal() {
+  X.fillStyle = 'rgba(18,15,24,.92)'; X.fillRect(0, 0, 320, 320);
+  X.fillStyle = '#d98cff'; X.font = '8px sans-serif'; X.textAlign = 'left';
+  X.fillText('what you remember', 30, 50);
+  X.fillStyle = '#e8e0ee'; X.font = '7px sans-serif';
+  meta.journal.forEach((s, i) => X.fillText('- ' + s, 30, 70 + i * 13));
+  if (!meta.journal.length) { X.fillStyle = '#6a6075'; X.fillText('nothing yet.', 30, 70); }
+}
+
+function drawStone(x, y) {
+  X.fillStyle = '#9a94a8';
+  X.beginPath(); X.ellipse(x, y, 13, 9, 0, 0, 7); X.fill();
+  X.strokeStyle = '#6d6679'; X.lineWidth = .7;
+  for (let i = 0; i < 3; i++) { X.beginPath(); X.moveTo(x - 7, y - 2 + i * 3); X.lineTo(x + 7, y - 2 + i * 3); X.stroke(); }
+}
+
+function drawBramble(x, y) {
+  X.strokeStyle = '#4a3b57'; X.lineWidth = 1.4;
+  for (let i = 0; i < 14; i++) {
+    const a = i * 1.1, r = 12 + (i % 4) * 5;
+    X.beginPath(); X.arc(x + Math.cos(a) * 6, y + Math.sin(a) * 5, r, a, a + 2.2); X.stroke();
+  }
+  X.fillStyle = '#ff5b6e';
+  for (let i = 0; i < 5; i++) {
+    const a = i * 1.3;
+    X.beginPath(); X.arc(x + Math.cos(a) * 14, y + Math.sin(a) * 11, 2.4, 0, 7); X.fill();
+  }
+}
+
+function drawUnicorn(x, y) {
+  X.fillStyle = '#fffaff';
+  X.beginPath(); X.ellipse(x, y, 6, 4.5, 0, 0, 7); X.fill();
+  X.beginPath(); X.ellipse(x, y - 6, 3.4, 3.4, 0, 0, 7); X.fill();
+  const hg = X.createLinearGradient(x, y - 15, x, y - 8);
+  hg.addColorStop(0, '#d98cff'); hg.addColorStop(1, '#ffe066');
+  X.fillStyle = hg;
+  X.beginPath(); X.moveTo(x - 1.6, y - 8); X.lineTo(x + 1.6, y - 8); X.lineTo(x, y - 15); X.fill();
+}
+
+// ---------- self-check ----------
+// The only non-trivial logic here is the site state machine. One runnable
+// check, per ponytail. Open index.html?test to run it.
+function selfTest() {
+  const fails = [], ok = (cond, m) => { if (!cond) fails.push(m); };
+  const bramble = SITES[1], stone = SITES[0];
+
+  newRun();
+  bramble.act(false);
+  ok(run.dead, 'tap on bramble should kill');
+
+  newRun();
+  bramble.act(true);
+  ok(run.bands.red && run.berry && !run.dead, 'first hold should set red + berry, not kill');
+  bramble.act(true);
+  ok(run.dead, 'second hold should kill');
+
+  newRun();
+  stone.act(false);
+  ok(run.bands.indigo, 'stone should set indigo');
+
+  newRun();
+  ok(!run.bands.red && !run.berry, 'run state must not survive newRun');
+  ok(meta.journal.length >= 2, 'journal must survive newRun');
+
+  document.title = fails.length ? 'FAIL: ' + fails.join(' | ') : 'all checks pass';
+  console.log(fails.length ? fails : 'all checks pass');
+  return fails;
+}
+
+newRun();
+if (location.search.includes('test')) selfTest();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

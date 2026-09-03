@@ -38,11 +38,14 @@ function newRun() {
   run = { x: 160, y: 272, bands: {}, berry: 0, name: 0, foal: 0, fx: 200, fy: 170,
           t: 0, dead: 0, end: 0, in: '' };
   for (const k in keys) keys[k] = 0;
-  holdT = 0; fired = 0; msg = ''; msgT = 0;
+  holdT = 0; fired = 0; msg = ''; msgT = 0; lastBands = 0; touch = null;
 }
 
 const note = s => { if (!meta.journal.includes(s)) meta.journal.push(s) };
-const die = s => { if (!run.dead) { run.dead = s; meta.deaths++ } return run.dead };
+const die = s => {
+  if (!run.dead) { run.dead = s; meta.deaths++; tone(98, 1.4, .2, 'triangle') }
+  return run.dead;
+};
 const phase = () => run.t < DUSK ? 0 : run.t < DARK ? 1 : 2;
 const setBands = () => BANDS.reduce((n, b) => n + (run.bands[b] ? 1 : 0), 0);
 
@@ -133,7 +136,10 @@ const SITES = [
       run.bands.violet = 1;
       return 'The seventh band arrives on its own.';
     },
-    act(held) { run.end = held && run.name ? 2 : 1; scene = 2 }
+    act(held) {
+      run.end = held && run.name ? 2 : 1; scene = 2;
+      SCALE.forEach((f, i) => setTimeout(() => tone(f, 1.2, .13), i * 190));
+    }
   },
   {
     // Only in the meadow once the pond is solved, which is what makes green
@@ -158,9 +164,31 @@ function nearest() {
   return null;
 }
 
+// ---------- audio ----------
+// Two oscillators and an exponential decay. The meadow is not cruel, so the
+// death tone is low and soft rather than harsh - the horror is that nothing
+// has gone wrong. Built lazily on the first gesture, per autoplay policy.
+let AC;
+function tone(f, d, vol, type) {
+  try {
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    const o = AC.createOscillator(), g = AC.createGain(), t = AC.currentTime;
+    o.type = type || 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(1e-4, t + d);
+    o.connect(g); g.connect(AC.destination);
+    o.start(t); o.stop(t + d);
+  } catch (e) {}
+}
+// a pentatonic step per band, so the seven together resolve rather than clash
+const SCALE = [523, 587, 659, 784, 880, 1047, 1175];
+const chime = i => tone(SCALE[i], .5, .16);
+
 // ---------- input ----------
 const keys = {};
 let holdT = 0, fired = 0, msg = '', msgT = 0, showJournal = 0;
+let touch = null, touched = 0, lastBands = 0;
+const MOVED = 12;              // logical px before a touch counts as walking
 
 function anyKey() {
   if (scene == 2) { scene = 0; return 1 }
@@ -171,6 +199,9 @@ function anyKey() {
 
 onkeydown = e => {
   const k = e.key.toLowerCase();
+  // arrows and space scroll the page, and js13k plays entries in an iframe
+  if (k == ' ' || k.slice(0, 5) == 'arrow') e.preventDefault();
+  if (e.repeat) return;        // auto-repeat would strobe the journal
   if (anyKey()) return;
   if (k == 'j') showJournal ^= 1;
   keys[k] = 1;
@@ -193,6 +224,38 @@ function act(s, held) {
   if (run.foal && s.id != 'pond') { msg = die(FOALDEATH); msgT = 5; return }
   msg = s.act(held) || ''; msgT = 5;
 }
+
+// Drag to walk, press to interact: a touch that has not travelled is the
+// tap/hold verb, and one that has is the stick. Same two meanings, no buttons.
+const logical = t => {
+  const S = Math.min(innerWidth, innerHeight) / 320;
+  return [(t.clientX - (innerWidth - 320 * S) / 2) / S,
+          (t.clientY - (innerHeight - 320 * S) / 2) / S];
+};
+
+c.addEventListener('touchstart', e => {
+  e.preventDefault();
+  touched = 1;
+  const [x, y] = logical(e.touches[0]);
+  if (anyKey()) return;
+  if (showJournal) { showJournal = 0; return }
+  if (y < 30) { showJournal = 1; return }   // the HUD line is the journal
+  touch = { x, y, dx: 0, dy: 0, moved: 0 };
+}, { passive: false });
+
+c.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (!touch) return;
+  const [x, y] = logical(e.touches[0]);
+  touch.dx = x - touch.x; touch.dy = y - touch.y;
+  if (Math.hypot(touch.dx, touch.dy) > MOVED) touch.moved = 1;
+}, { passive: false });
+
+c.addEventListener('touchend', e => {
+  e.preventDefault();
+  if (touch && !touch.moved && !fired && holdT > 0) release();
+  touch = null; holdT = 0; fired = 0;
+}, { passive: false });
 
 // ---------- scenery ----------
 // Deterministic so the flowers don't shimmer between frames or runs.
@@ -217,9 +280,17 @@ function update(dt) {
   if (msgT > 0) msgT -= dt;
   if (run.t > CLOSE) { die('Dark. The meadow closes the way a hand closes.'); return }
 
+  // The clock keeps running while you read - it is a resource, and pausing it
+  // would make the journal a place to hide. You just stop walking blind.
+  if (showJournal) return;
+
   const sp = 68 * dt;
-  const mx = (keys.d || keys.arrowright ? 1 : 0) - (keys.a || keys.arrowleft ? 1 : 0);
-  const my = (keys.s || keys.arrowdown ? 1 : 0) - (keys.w || keys.arrowup ? 1 : 0);
+  let mx = (keys.d || keys.arrowright ? 1 : 0) - (keys.a || keys.arrowleft ? 1 : 0);
+  let my = (keys.s || keys.arrowdown ? 1 : 0) - (keys.w || keys.arrowup ? 1 : 0);
+  if (touch && touch.moved) {
+    const d = Math.hypot(touch.dx, touch.dy) || 1;
+    mx = touch.dx / d; my = touch.dy / d;
+  }
   run.x = Math.max(10, Math.min(310, run.x + mx * sp));
   run.y = Math.max(50, Math.min(310, run.y + my * sp));
 
@@ -244,10 +315,16 @@ function update(dt) {
   if (run.dead) return;
 
   const site = nearest();
-  if ((keys.e || keys[' ']) && site) {
+  const down = keys.e || keys[' '] || (touch && !touch.moved);
+  if (down && site) {
     holdT += dt;
     if (holdT >= HOLD && !fired) { fired = 1; act(site, 1) }
-  } else if (!keys.e && !keys[' ']) { holdT = 0; fired = 0 }
+  } else if (!down) { holdT = 0; fired = 0 }
+
+  // One place to notice a band was set, whatever path set it.
+  const n = setBands();
+  if (n > lastBands) chime(n - 1);
+  lastBands = n;
 }
 
 // ---------- draw ----------
@@ -300,7 +377,8 @@ function meadow() {
   if (site) {
     X.fillStyle = 'rgba(30,20,40,.72)'; X.fillRect(20, 292, 280, 20);
     X.fillStyle = '#fff'; X.font = '7px sans-serif';
-    X.fillText('[E] ' + site.tap + '   ·   [hold E] ' + site.hold, 160, 305);
+    X.fillText(touched ? 'tap: ' + site.tap + '   ·   press: ' + site.hold
+      : '[E] ' + site.tap + '   ·   [hold E] ' + site.hold, 160, 305);
     if (holdT > 0) {
       X.strokeStyle = '#fff'; X.lineWidth = 2;
       X.beginPath();
@@ -330,7 +408,8 @@ function hud() {
     X.fillRect(96 + i * 18, 10, 15, 4);
   }
   X.fillStyle = 'rgba(60,40,70,.5)'; X.font = '6px sans-serif';
-  X.fillText(meta.deaths + ' deaths   ·   [J] what you remember', 160, 26);
+  X.fillText(meta.deaths + ' deaths   ·   ' + (touched ? '' : '[J] ') +
+    'what you remember', 160, 26);
 }
 
 function title() {
@@ -506,6 +585,9 @@ globalThis.__T = {
   DUSK, DARK, CLOSE, HOLD, setBands, phase, layout, draw,
   get run() { return run }, get meta() { return meta },
   get msg() { return msg }, get scene() { return scene }, setScene(v) { scene = v },
+  get journalOpen() { return showJournal }, setJournal(v) { showJournal = v },
+  get touch() { return touch }, setTouch(v) { touch = v; touched = 1 },
+  onkeydown: e => onkeydown(e), MOVED,
 };
 
 // ---------- self-check ----------

@@ -1,0 +1,25 @@
+{
+  "name": "seven-deaths-of-the-meadow",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "node build.mjs",
+    "max": "node build.mjs --max",
+    "test": "node test.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/adbarc92/seven-deaths-of-the-meadow.git"
+  },
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/adbarc92/seven-deaths-of-the-meadow/issues"
+  },
+  "homepage": "https://github.com/adbarc92/seven-deaths-of-the-meadow#readme",
+  "description": "js13kGames 2026 entry",
+  "devDependencies": {
+    "advzip-bin": "^2.0.0",
+    "esbuild": "^0.23.0",
+    "roadroller": "^2.1.0"
+  },
+  "private": true
+}

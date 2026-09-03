@@ -35,7 +35,7 @@ let meta = { journal: [], deaths: 0 };
 let run, scene = 0;            // 0 title, 1 meadow, 2 ending
 
 function newRun() {
-  run = { x: 160, y: 272, bands: {}, berry: 0, name: 0, foal: 0, fx: 200, fy: 170,
+  run = { x: 176, y: 274, bands: {}, berry: 0, name: 0, foal: 0, fx: 200, fy: 170,
           t: 0, dead: 0, end: 0, in: '' };
   for (const k in keys) keys[k] = 0;
   holdT = 0; fired = 0; msg = ''; msgT = 0; lastBands = 0; touch = null;
@@ -344,7 +344,7 @@ function draw() {
   X.restore();
 }
 
-function meadow() {
+function scenery() {
   const [tint, fa] = TIME[phase()];
 
   const g = X.createLinearGradient(0, 40, 0, 320);
@@ -371,9 +371,12 @@ function meadow() {
   drawUnicorn(run.x, run.y, 1, 1);
 
   if (tint) { X.fillStyle = tint; X.fillRect(0, 0, 320, 320) }
+}
 
+function meadow() {
+  scenery();
   hud();
-  const site = run.dead ? null : nearest();
+  const site = run.dead || showJournal ? null : nearest();
   if (site) {
     X.fillStyle = 'rgba(30,20,40,.72)'; X.fillRect(20, 292, 280, 20);
     X.fillStyle = '#fff'; X.font = '7px sans-serif';
@@ -387,7 +390,7 @@ function meadow() {
     }
   }
 
-  if (msgT > 0 && !run.dead) {
+  if (msgT > 0 && !run.dead && !showJournal) {
     X.fillStyle = 'rgba(30,20,40,.62)';
     X.fillRect(16, 32, 288, 8 + 11 * lines(msg, 258, 8));
     wrap(msg, 160, 44, '#fff', 8, 258);
@@ -404,7 +407,7 @@ function meadow() {
 function hud() {
   // Position-coded, never hue-coded: band i always occupies slot i. (ART.md s1)
   for (let i = 0; i < 7; i++) {
-    X.fillStyle = run.bands[BANDS[i]] ? HUES[i] : 'rgba(255,255,255,.18)';
+    X.fillStyle = run.bands[BANDS[i]] ? HUES[i] : 'rgba(60,40,70,.22)';
     X.fillRect(96 + i * 18, 10, 15, 4);
   }
   X.fillStyle = 'rgba(60,40,70,.5)'; X.font = '6px sans-serif';
@@ -413,14 +416,18 @@ function hud() {
 }
 
 function title() {
-  X.fillStyle = '#1a1522'; X.fillRect(0, 0, 320, 320);
-  const g = X.createLinearGradient(60, 0, 260, 0);
+  scenery();
+  const g = X.createLinearGradient(52, 0, 268, 0);
   HUES.forEach((h, i) => g.addColorStop(i / 6, h));
-  X.fillStyle = g; X.font = '13px sans-serif';
-  X.fillText('SEVEN DEATHS', 160, 130);
-  X.fillText('OF THE MEADOW', 160, 148);
-  X.fillStyle = '#8a7f95'; X.font = '7px sans-serif';
-  X.fillText('it is a nice day. any key.', 160, 186);
+  X.font = '13px sans-serif';
+  X.strokeStyle = 'rgba(18,15,24,.72)'; X.lineWidth = 2.6; X.lineJoin = 'round';
+  X.strokeText('SEVEN DEATHS', 160, 152); X.strokeText('OF THE MEADOW', 160, 170);
+  X.fillStyle = g;
+  X.fillText('SEVEN DEATHS', 160, 152); X.fillText('OF THE MEADOW', 160, 170);
+  X.font = '7px sans-serif'; X.lineWidth = 2;
+  X.strokeText('it is a nice day. any key.', 160, 198);
+  X.fillStyle = '#fff';
+  X.fillText('it is a nice day. any key.', 160, 198);
 }
 
 function ending() {
@@ -428,7 +435,7 @@ function ending() {
   const t = run.end == 2
     ? 'You say the name written under the tallest face.\nSeven colors come apart into one.\nThe thing on the other side was never a unicorn. It was something divided seven ways a long time ago, and every rule you learned was it asking, politely, to be put back together.\nIt does not need the meadow now.\nNeither, it turns out, do you.'
     : 'The unicorn takes the six colors and gives you the seventh.\nYou leave the meadow whole, having paid nothing you were not asked for.\nIt watches you the entire way out. It does not look away.';
-  wrap(t, 160, 96, '#e8e0ee', 7, 250);
+  wrap(t, 160, 150 - lines(t, 250, 7) * 5, '#e8e0ee', 7, 250);
   const g = X.createLinearGradient(90, 0, 230, 0);
   HUES.forEach((h, i) => g.addColorStop(i / 6, h));
   X.fillStyle = g; X.font = '8px sans-serif';
@@ -436,7 +443,7 @@ function ending() {
 }
 
 function journal() {
-  X.fillStyle = 'rgba(18,15,24,.94)'; X.fillRect(0, 0, 320, 320);
+  X.fillStyle = '#120f18'; X.fillRect(0, 0, 320, 320);
   X.textAlign = 'left';
   X.fillStyle = '#d98cff'; X.font = '8px sans-serif';
   X.fillText('what you remember', 26, 46);
@@ -514,15 +521,18 @@ function drawRing(x, y) {
     const a = i * .524, sx = x + Math.cos(a) * 30, sy = y + Math.sin(a) * 24;
     X.strokeStyle = '#7ddb8f'; X.lineWidth = 1.4;
     X.beginPath(); X.moveTo(sx, sy + 9); X.lineTo(sx, sy - 6); X.stroke();
-    let dx = 0, dy = 3;
+    let dx = 0, dy = 5;
     if (noon) {
       const d = Math.hypot(run.x - sx, run.y - sy) || 1;
-      dx = (run.x - sx) / d * 2.4; dy = (run.y - sy) / d * 2.4;
+      dx = (run.x - sx) / d * 3; dy = (run.y - sy) / d * 3;
     }
     X.fillStyle = '#ffe066';
     X.beginPath(); X.arc(sx + dx, sy - 6 + dy, 3.4, 0, 7); X.fill();
-    X.fillStyle = '#8a6b3f';
-    X.beginPath(); X.arc(sx + dx, sy - 6 + dy, 1.5, 0, 7); X.fill();
+    // the dark centre is the face. After noon you only see the back of it.
+    if (noon) {
+      X.fillStyle = '#8a6b3f';
+      X.beginPath(); X.arc(sx + dx, sy - 6 + dy, 1.5, 0, 7); X.fill();
+    }
   }
 }
 
@@ -544,7 +554,7 @@ function drawGate(x, y) {
   X.globalAlpha = .3 + .6 * setBands() / 7;
   X.beginPath();
   X.moveTo(x - 17, y + 24); X.lineTo(x - 17, y);
-  X.arc(x, y, 17, Math.PI, 0, true);
+  X.arc(x, y, 17, Math.PI, 2 * Math.PI);   // the top half; anticlockwise drew the bowl
   X.lineTo(x + 17, y + 24);
   X.stroke();
   X.globalAlpha = 1;
@@ -581,7 +591,7 @@ function drawUnicorn(x, y, k, horn) {
 // Handles for game.test.mjs to drive the game headlessly. Stripped from the
 // shipped bundle by the /*TEST*/ fence, so these cost zero bytes.
 globalThis.__T = {
-  SITES, BANDS, HUES, newRun, nearest, update, act, keys, follow, selfTest,
+  SITES, BANDS, HUES, newRun, nearest, update, act, keys, follow, selfTest, lines,
   DUSK, DARK, CLOSE, HOLD, setBands, phase, layout, draw,
   get run() { return run }, get meta() { return meta },
   get msg() { return msg }, get scene() { return scene }, setScene(v) { scene = v },

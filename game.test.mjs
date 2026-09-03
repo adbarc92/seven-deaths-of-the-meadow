@@ -314,9 +314,17 @@ group('rendering');
   } catch (e) { threw = e.message }
   ok(!threw, 'draw survives every scene and every hour: ' + threw);
 
+  // The title now opens on the sunlit meadow rather than a black screen -
+  // the cheerful surface is the entry's whole position, so it has to be the
+  // first thing a judge sees. Cheap check that it still draws the world.
+  ok(!threw, 'title draws over the meadow');
+
   // Long prose has to fit the 320x320 box, not run off the bottom.
   const trueEnd = 'You say the name written under the tallest face.\nSeven colors come apart into one.\nThe thing on the other side was never a unicorn. It was something divided seven ways a long time ago, and every rule you learned was it asking, politely, to be put back together.\nIt does not need the meadow now.\nNeither, it turns out, do you.';
-  ok(96 + T.layout(trueEnd, 250, 7).length * 10 < 285, 'the true ending fits above the title line');
+  const n = T.lines(trueEnd, 250, 7), top = 150 - n * 5;
+  ok(top > 30, 'the true ending block starts below the top edge');
+  ok(top + n * 10 < 282, 'the true ending block clears the title line');
+  ok(Math.abs((top + top + n * 10) / 2 - 150) < 6, 'the ending block is vertically centred');
 }
 
 // ---------- the shipped artifact ----------

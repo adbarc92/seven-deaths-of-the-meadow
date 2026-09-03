@@ -4,7 +4,8 @@
   "scripts": {
     "build": "node build.mjs",
     "max": "node build.mjs --max",
-    "test": "node game.test.mjs"
+    "test": "node game.test.mjs",
+    "shots": "node visual.test.mjs"
   },
   "repository": {
     "type": "git",
@@ -19,6 +20,7 @@
   "devDependencies": {
     "advzip-bin": "^2.0.0",
     "esbuild": "^0.23.0",
+    "puppeteer-core": "^25.9.0",
     "roadroller": "^2.1.0"
   },
   "private": true

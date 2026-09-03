@@ -241,6 +241,16 @@ function drawUnicorn(x, y) {
   X.beginPath(); X.moveTo(x - 1.6, y - 8); X.lineTo(x + 1.6, y - 8); X.lineTo(x, y - 15); X.fill();
 }
 
+/*TEST*/
+// ---------- harness hooks ----------
+// Handles for test.mjs to drive the game headlessly. Stripped from the
+// shipped bundle by the /*TEST*/ fence, so these cost zero bytes.
+globalThis.__T = {
+  SITES, newRun, nearest, update, selfTest, keys,
+  get run() { return run }, get meta() { return meta },
+  get msg() { return msg }, setMsg(v) { msg = v }
+};
+
 // ---------- self-check ----------
 // The only non-trivial logic here is the site state machine. One runnable
 // check, per ponytail. Open index.html?test to run it.
@@ -271,8 +281,10 @@ function selfTest() {
   return fails;
 }
 
-newRun();
 if (location.search.includes('test')) selfTest();
+/*ENDTEST*/
+
+newRun();
 requestAnimationFrame(frame);
 </script>
 </body>

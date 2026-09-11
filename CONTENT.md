@@ -61,6 +61,7 @@ six words and nothing else in the game ever mentions the controls.
 | hold (first) | You press a single thorn until it drinks. A red berry falls loose into your hand. |
 | hold (repeat) | **DEATH** — The bramble drank twice. It only ever wanted once. |
 | journal | The bramble drinks. One thorn was enough. |
+| journal | Open hands are taken whole. |
 
 ### The hollow — orange (requires berry)
 
@@ -71,6 +72,7 @@ six words and nothing else in the game ever mentions the controls.
 | hold, with berry | You set the red berry down in the hollow. The bees draw back and let the comb go. |
 | journal | The hollow was already owed. |
 | journal | Bees keep back from the berry. |
+| journal | An empty hand is still an offer. |
 
 ### The sunflower ring — yellow (requires dusk)
 
@@ -110,6 +112,7 @@ after it stopped being dangerous* — a thing almost nobody does the first time.
 | at the pond | The foal drinks where you could not, and is not taken. It looks at you until you understand it was never the one in danger. |
 | journal | The foal follows. |
 | journal | It drank and was not taken. |
+| journal | The meadow charges the same price twice. |
 
 ### The gate — violet
 
@@ -117,6 +120,7 @@ after it stopped being dangerous* — a thing almost nobody does the first time.
 |---|---|
 | approach, < 6 bands | **DEATH** — You stepped into the gate unfinished. It sorted you into the colors you had. |
 | 6 bands set | The seventh band arrives on its own. Nothing was asked for it. |
+| journal | The gate sorts what arrives unfinished. |
 
 ---
 
@@ -125,6 +129,7 @@ after it stopped being dangerous* — a thing almost nobody does the first time.
 | Trigger | Line |
 |---|---|
 | full dark | **DEATH** — Dark. The meadow closes the way a hand closes. |
+| journal | Dark closes the meadow. |
 
 ---
 

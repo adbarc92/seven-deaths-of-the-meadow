@@ -4,81 +4,137 @@
 
 *Rewritten in place each session.*
 
-**TL;DR.** The game is content-complete, verified, and **finished as a build**.
-The remaining work is still not code: **set `AUTHOR`, submit, and watch one
-person play.** Both need a human. Nothing is in flight — clean tree, no open
-PRs, no branches, no worktrees, no background processes.
+**TL;DR.** The first human playtest (the author, 2026-09-08) found two
+entry-sinking bugs, both now fixed and on `main`. **The build is ready to
+upload and has still never been submitted** — that is the user's hands-on
+step, and the only time-bounded item. Design work is paused, not abandoned:
+the playtest found the game's one decision has a dominant answer, and the
+proposed fix (a new site, "the horn") did not survive two rounds of critique
+in its current form.
 
-**Where the schedule stands.** Deadline **05:00 America/Denver, Sep 13, 2026** —
-**eight days out**. The DESIGN.md s8 build order (Sep 3–12) all landed on Sep 3.
-The spare days belong to playtesting and submission, not to new systems
-(DESIGN.md s9).
+**Where the schedule stands.** Deadline **05:00 America/Denver, Sep 13, 2026**.
+DESIGN.md s8's submit date was Sep 9 and has passed. Entries update freely
+until the deadline (JS13K.md s5), so upload now and re-submit after each fix.
 
-**Readiness:** submittable, **still not submitted**. Re-verified 2026-09-05 at
-`eaaead8`:
+**Readiness:** submittable, **not yet submitted**. Verified 2026-09-10:
 
 | Check | Result |
 |---|---|
-| `npm run max` | green — **5215 / 13312 bytes (8097 free)** |
-| `npm test` | **76 passed, 0 failed** |
-| `npm run shots` | not re-run this session — last passed 2026-09-03 at `d239aa4`, tree unchanged since |
+| `npm run max` | green — **5275 / 13312 bytes (8037 free)** |
+| `npm test` | **83 passed, 0 failed** (76 + 7 guard-radius tests) |
+| `npm run shots` | clean — Chrome + Firefox, dev file and shipped zip. One run crashed with a Node trace; an immediate rerun was clean. Trace not captured, cause unknown — treat as a flake until it recurs. |
+| iframe focus on load | **PASS** (manual, 2026-09-08, http-served iframe) |
+| iframe arrow/space scroll leak | **PASS** (manual, 2026-09-08) |
 
-⚠️ **`npm run max` is not deterministic.** It produced **5215** bytes on Sep 5
-against byte-identical game code that produced **5193** on Sep 3 (`eaaead8` is a
-docs-only commit). Roadroller's parameter search lands differently between runs.
-Nothing is wrong — but *the number you submit is the number in the zip you
-actually upload*, so re-read it from the build output at submit time rather than
-quoting this doc, and see gap 7 about tagging.
+`npm run max` is still non-deterministic (5261, 5263, 5268, 5275 across this
+session's builds). Read the number off the build you upload.
 
 ### Known gaps
 
-1. **The entry has not been submitted.** Still the only time-sensitive item, and
-   now four days past the plan's own Sep 9 submit date. DESIGN.md s8 makes
-   "submit a working build and re-submit daily" the hedge against the last days
-   evaporating; JS13K.md s5 confirms entries update freely until the deadline.
-   Nothing is gained by waiting.
-2. **`AUTHOR` is empty.** [index.html](../index.html) line 25 is
-   `const AUTHOR = '';`; line 446 skips the byline while blank. One-line fix,
-   blocks gap 1, needs a human decision. **Do not invent a name.**
-3. **No human has played it.** Unchanged. A full playtest protocol now exists
-   (see below) but no session has been run.
-4. **The iframe is never tested — new finding, see this session's log.**
-   All three test entry points load the game as a top-level document
-   ([visual.test.mjs](../visual.test.mjs) lines 27, 155, 221). js13k serves
-   entries **in an iframe**, and the arrow/space scroll-prevention fix from PR #3
-   was written *specifically because of* that context. The fix has never been
-   exercised in the condition that motivated it. Two operator checks and one
-   automated fix are described in the log entry below. **NOT RUN — not failed.**
-5. **8.1 KB of budget unspent.** Standing decision, not an oversight
-   (DESIGN.md s4 and s9). Spending it needs an explicit call from the user.
-6. **No audio mute, and the audio has never been *heard*.** Headless Chrome
-   produces no sound, so all 76 checks say nothing about how it sounds. The death
-   tone is a 98 Hz triangle held 1.4 s ([index.html](../index.html) line 49).
-   DESIGN.md s9 rules out a settings toggle, so if it is unpleasant the fix is a
-   volume/duration number, not a mute.
-7. **No git tag on any build.** Cheap insurance for "which bytes did I submit?",
-   and now more clearly worth doing given the nondeterminism noted above.
+1. **Not uploaded.** Needs the user's js13k account.
+2. **A partial hold carries between sites — live bug, unfixed.** `holdT` is
+   only reset when the key is released, never when the player leaves a prompt
+   ring. Start a hold at one site, walk away with the key down, and it
+   completes at the next site with no fresh press. Verified A/B on
+   2026-09-09: identical 0.25 s at the hollow kills only when preceded by a
+   0.30 s partial hold at the bramble. Fix: reset `holdT`/`fired` when
+   `nearest()` returns a different site from last frame; mutation-check it.
+3. **A win is not legible as a win.** The author reached the standard ending
+   and could not tell whether they had won.
+4. **Respawn ignores DESIGN.md s2** ("wake again, seconds from where you
+   failed") — `newRun()` always wakes the player at the stone. The larger
+   cost of a death is not the walk, though: `run.t` resets, so any death on
+   the winning path means waiting out `DUSK = 32` again.
+5. **"Hold everything" is a dominant strategy.** No site rewards tapping.
+   This is *deliberate* per CONTENT.md s2 ("the carving is the tutorial. Tap
+   is take, hold is give") but the playtest found it boring. The horn
+   proposal to break it is parked — see the session log.
+6. **No blind playtest.** The author played; discoverability (time to first
+   hold, time to first `J`) is still unmeasured. The protocol from the Sep 5
+   entry still applies.
+7. **Audio unreported.** The author played with a browser but did not
+   comment on sound; nobody has confirmed hearing it.
+8. **CLAUDE.md's pickup block is stale** (76 checks, blank `AUTHOR`).
+   Its own last line says STATUS.md wins.
+9. **8037 bytes unspent.** Standing decision; spending it is the user's call.
 
 ### Next steps
 
-1. **Set `AUTHOR`, `npm run max`, upload `game.zip`, tag the commit.** Ten
-   minutes. Converts a finished game into an entered one. Re-submit whenever
-   anything changes, through Sep 13.
-2. **Close the iframe gap** (gap 4) — either the two manual checks or, better,
-   an automated iframe case in [visual.test.mjs](../visual.test.mjs). This is the
-   highest-value engineering work left, because an entry that appears not to
-   respond on the js13k play page loses votes for a reason unrelated to the game.
-3. **Run one playtest session** using the protocol below. Fix the single thing
-   they quit over — a clearer journal entry or a shorter walk, **never a softer
-   rule** (CONTENT.md s6).
-4. **Decide whether any of the 8.1 KB gets spent**, or declare the entry done and
-   coast to the deadline on daily re-submits.
+1. **Upload `game.zip` built from `main`**, then record the uploaded byte
+   count and date here.
+2. **Fix the hold carry-over** (gap 2). Small, confirmed, and it produces
+   exactly the "arbitrary death" feeling the playtest reported. Re-submit.
+3. **Then choose** between the confirmed defects (gaps 3–4) and new content
+   (the horn, reworked). The Sep 9 session log has the case for each.
 
 ---
 
 ## Session log
 
 *Newest first.*
+
+### 2026-09-08 to 09-10 — first human playtest, two shipped bugs, a design parked
+
+**The playtest.** The author played the shipping zip in an http-served iframe
+on a deliberately scrollable page — the js13k condition, never tested before.
+Iframe focus on load and the arrow/space scroll fix both **PASS**. (A first
+attempt at the scroll check was invalid: the harness put the game below the
+fold, so the author's own wheel-scroll tripped the leak detector. Rebuilt with
+the game above the fold and key-attributed detection before scoring.)
+
+The verdict: "the concept is fun," but too opaque, the objective unclear, and
+not enough content. The author never knowingly completed the first act —
+and reached an ending without being able to tell whether it was a win.
+
+**What that turned out to be.**
+
+- **The gate could be won with zero bands.** Every guarded site checks
+  `near()` at `s.r`, but `nearest()` offered the verb out to `s.r + 14`.
+  From that 14 px ring, tapping the gate ended the game with no bands and no
+  death — which is what happened in the playtest. The same ring made the
+  **true name free at noon**, so the replay hook DESIGN.md s4 describes did
+  not exist in the build. Fixed by flagging lethal-guard sites `k` and
+  stopping the verb at `s.r` for them. Scoped to the gate and ring on
+  purpose: the general fix would have halved the foal's pickup range for no
+  benefit. Seven tests stand at real offsets and hold a key; four fail when
+  the bug is reinstated. The bug class was invisible because `harness.at()`
+  teleports to the exact centre — nothing had ever stood in the ring.
+- **The journal recorded only four of nine deaths.** Five deaths wrote
+  nothing, so their lesson vanished with the five-second death line. Added
+  five lines, voice-checked against CONTENT.md s1 and documented there. The
+  foal death has two code paths (`act()` and the `near()` loop); both write.
+- **`AUTHOR` set to "Alex Barclay"**, at the user's instruction.
+
+**The design thread, and why it stopped.** The author found "hold E at all of
+them" solves the game. Confirmed: three sites ignore `held` and hold is right
+at the other four. A new site was proposed — a horn in the grass where hold
+kills and tap is correct — plus an item and a third ending. Two rounds of
+independent adversarial critique cut it down hard:
+
+- Round 1 found the two bugs above, and removed the item and third ending
+  (an item-gated ending violates DESIGN.md s4's "gated on knowledge, not on
+  completion") and a proposed hollow inversion (the comb is handed over with
+  the berry, so nothing is owed afterward). It also caught the spec
+  **inventing a DESIGN.md s5 rule** that does not exist.
+- Round 2 found that hold-dominance is **deliberate** — CONTENT.md s2 makes
+  the carving the tutorial — so the horn's real job is contradicting it; that
+  with no state the horn stays drawn and re-tappable after "you lift it out";
+  that the player's own horn is the same vertical spike with the same
+  gradient (fails ART.md s1); and that a horn the meadow "never owned"
+  contradicts the true ending's "divided seven ways." Its claim that hold
+  time accumulates over empty grass was **wrong**, but chasing it found the
+  real carry-over bug (gap 2).
+
+The horn is parked, not rejected. The unsolved problem it was reaching for:
+one inverted site is an exception, not a rule, and no correct second
+instance has been found. The v1 spec at
+`docs/superpowers/specs/2026-09-08-meadow-debt-direction-design.md` is
+untracked, superseded, and deliberately not committed.
+
+**On process.** Nothing from this work was committed until the 10th, two
+days after the fixes existed — `main` sat on the zero-band-win build through
+the plan's own Sep 9 submit date. Commit fixes when they are verified; do
+not let them ride on a branch behind design work.
 
 ### 2026-09-05 — playtest protocol, and a hole in the test coverage
 

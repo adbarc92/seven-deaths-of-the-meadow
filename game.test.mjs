@@ -57,6 +57,43 @@ group('sites');
   ok(!T.run.dead && T.run.bands.blue, 'pond hold sets blue');
 }
 
+// ---------- guard radius ----------
+// Every guarded site checks near() at r, but the prompt reached r + 14. That
+// annulus let the player act from outside the guard: the gate ended the game
+// with no bands set, and the true name came free at noon. harness.at() lands
+// on the exact centre, so nothing here had ever stood in the gap.
+group('guard radius');
+{
+  const T = load();
+  // Stand d px from a site's centre and hold E, the way a player does. Both
+  // routes into act() run through nearest(), so this covers tap as well.
+  const holdAt = (id, d, t = 0) => {
+    begin(T, t);
+    const s = T.SITES.find(x => x.id === id);
+    T.run.x = s.x + d; T.run.y = s.y;
+    tick(T, 0.05, 4);                     // let near() run on entry first
+    T.keys.e = 1; tick(T, 0.05, 20); T.keys.e = 0;
+    return s;
+  };
+
+  let s = holdAt('gate', 30);
+  ok(T.nearest() !== s, 'the gate offers no verb from outside its kill radius');
+  ok(!T.run.end && T.scene !== 2, 'the gate cannot be entered from the prompt ring');
+
+  holdAt('gate', 10);
+  ok(T.run.dead, 'arriving at the gate under six bands still kills');
+
+  s = holdAt('ring', 35, 0);
+  ok(T.nearest() !== s, 'the ring offers no verb from outside its noon kill radius');
+  ok(!T.run.bands.yellow && !T.run.name, 'the true name is not free at noon');
+
+  holdAt('ring', 20, 0);
+  ok(T.run.dead, 'standing in the ring at noon still kills');
+
+  holdAt('ring', 20, T.DUSK + 1);
+  ok(!T.run.dead && T.run.bands.yellow, 'the ring still sets yellow at dusk');
+}
+
 // ---------- the clock (DESIGN.md s4: noon and dusk are positions on it) ----------
 group('clock');
 {

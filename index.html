@@ -22,7 +22,7 @@ const BANDS = ['red','orange','yellow','green','blue','indigo','violet'];
 const HOLD = 0.5;              // seconds to register a hold instead of a tap
 // Shown under the title on the ending. CONTENT.md s4 allows a title and an
 // author line and nothing else. Set it to your name before submitting.
-const AUTHOR = '';
+const AUTHOR = 'Alex Barclay';
 
 // The soft clock. Noon and dusk are positions on it, which is what makes the
 // yellow puzzle work; dark closing the meadow is the second ambient death.
@@ -72,7 +72,10 @@ const SITES = [
   {
     id: 'bramble', x: 58, y: 214, r: 24, tap: 'reach in', hold: 'press a thorn',
     act(held) {
-      if (!held) return die('You reached in openhanded. The bramble took the whole arm as an offer.');
+      if (!held) {
+        note('Open hands are taken whole.');
+        return die('You reached in openhanded. The bramble took the whole arm as an offer.');
+      }
       if (run.bands.red) return die('The bramble drank twice. It only ever wanted once.');
       run.bands.red = 1; run.berry = 1;
       note('The bramble drinks. One thorn was enough.');
@@ -87,14 +90,17 @@ const SITES = [
         return die('You took the honey. The hollow was already owed, and it collected.');
       }
       // no berry covers the repeat visit too - the debt is settled once
-      if (!run.berry) return die('You offered an empty hand. The hollow accepted the hand.');
+      if (!run.berry) {
+        note('An empty hand is still an offer.');
+        return die('You offered an empty hand. The hollow accepted the hand.');
+      }
       run.bands.orange = 1; run.berry = 0;
       note('Bees keep back from the berry.');
       return 'You set the red berry down in the hollow. The bees draw back and let the comb go.';
     }
   },
   {
-    id: 'ring', x: 72, y: 112, r: 30, tap: 'walk in', hold: 'walk the ring',
+    id: 'ring', x: 72, y: 112, r: 30, k: 1, tap: 'walk in', hold: 'walk the ring',
     // standing in it at noon is the death; the verb never gets a chance
     near() {
       if (phase()) return;
@@ -132,9 +138,12 @@ const SITES = [
     }
   },
   {
-    id: 'gate', x: 160, y: 60, r: 22, tap: 'enter', hold: 'speak',
+    id: 'gate', x: 160, y: 60, r: 22, k: 1, tap: 'enter', hold: 'speak',
     near() {
-      if (setBands() < 6) return die('You stepped into the gate unfinished. It sorted you into the colors you had.');
+      if (setBands() < 6) {
+        note('The gate sorts what arrives unfinished.');
+        return die('You stepped into the gate unfinished. It sorted you into the colors you had.');
+      }
       if (run.bands.violet) return;
       run.bands.violet = 1;
       return 'The seventh band arrives on its own.';
@@ -162,8 +171,11 @@ function follow() {
 const here = s => Math.hypot(s.x - run.x, s.y - run.y);
 const live = s => s.id != 'foal' || (run.bands.blue && !run.foal && !run.bands.green);
 
+// k marks a site whose near() can kill. The verb must never reach further
+// than the guard that punishes arriving: while it did, the prompt ring was
+// a way to act on the gate and the ring without ever entering either.
 function nearest() {
-  for (const s of SITES) if (live(s) && here(s) < s.r + 14) return s;
+  for (const s of SITES) if (live(s) && here(s) < s.r + (s.k ? 0 : 14)) return s;
   return null;
 }
 
@@ -224,7 +236,10 @@ function release() {
 
 // One dispatcher so the foal rule cannot be forgotten at a call site.
 function act(s, held) {
-  if (run.foal && s.id != 'pond') { msg = die(FOALDEATH); msgT = 5; return }
+  if (run.foal && s.id != 'pond') {
+    note('The meadow charges the same price twice.');
+    msg = die(FOALDEATH); msgT = 5; return;
+  }
   msg = s.act(held) || ''; msgT = 5;
 }
 
@@ -281,7 +296,10 @@ function frame(now) {
 function update(dt) {
   run.t += dt;
   if (msgT > 0) msgT -= dt;
-  if (run.t > CLOSE) { die('Dark. The meadow closes the way a hand closes.'); return }
+  if (run.t > CLOSE) {
+    note('Dark closes the meadow.');
+    die('Dark. The meadow closes the way a hand closes.'); return;
+  }
 
   // The clock keeps running while you read - it is a resource, and pausing it
   // would make the journal a place to hide. You just stop walking blind.
@@ -311,7 +329,7 @@ function update(dt) {
   if (a) {
     if (run.in != a.id) {
       run.in = a.id;
-      if (run.foal && a.id != 'pond') { msg = die(FOALDEATH); msgT = 5 }
+      if (run.foal && a.id != 'pond') { note('The meadow charges the same price twice.'); msg = die(FOALDEATH); msgT = 5 }
       else { const m = a.near(); if (m) { msg = m; msgT = 5 } }
     }
   } else run.in = '';

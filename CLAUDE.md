@@ -1,47 +1,23 @@
 # CLAUDE.md
 
-<!-- BEGIN: ACTIVE-SESSION-PICKUP — remove this block once the entry has been submitted and the AUTHOR line is set -->
-<!-- BEGIN: ACTIVE-SESSION-PICKUP — remove once the entry is submitted and the playtest is done -->
+<!-- BEGIN: ACTIVE-SESSION-PICKUP — remove this block when feat/meadow-expansion (PR #10) merges to main -->
 ## Active session pickup
 
-**Read [`docs/STATUS.md`](docs/STATUS.md) before doing anything else.** Its
-State summary is current as of **2026-09-05** and is rewritten every session.
+If the current branch is `feat/meadow-expansion` (check with
+`git rev-parse --abbrev-ref HEAD`), or PR #10 is still open, read
+[`docs/STATUS.md`](docs/STATUS.md) before doing anything else. Its State
+summary (2026-09-14) is the handoff. It documents:
 
-Short version, so you can orient without reading it first:
+- the ten-item post-jam expansion on that branch — one commit per item, each
+  with its byte cost — up for review as
+  [PR #10](https://github.com/adbarc92/seven-deaths-of-the-meadow/pull/10),
+- the entry's status: submitted at the deadline, from `main` before the branch,
+- adaptations and test bugs caught along the way, so they are not re-derived,
+- the prioritised next steps: merge, play the branch, redraft item 9's prose
+  (the third ending), listen to the audio.
 
-- The game is **done as a build** and verified — 76/76 headless checks and a
-  Chrome + Firefox pass. `main` is clean; no open PRs, no other branches, no
-  worktrees, nothing in flight.
-- **The deadline is 05:00 America/Denver on Sep 13, 2026.** The whole DESIGN.md
-  s8 build order landed on Sep 3, so engineering capacity stopped being the
-  constraint a week ago.
-- **Two blocking items, both needing a human, both unchanged since Sep 3:**
-  1. `AUTHOR` at [`index.html`](index.html) line 25 is still `''`, so the ending
-     renders no byline. **Ask for the name — do not invent one.**
-  2. **The entry has never been submitted.** It has been submittable since Sep 3
-     and the plan's own submit date was Sep 9. This is the only time-sensitive
-     thing left.
-- **Do not quote a byte count from memory or from a doc.** `npm run max` is not
-  deterministic — it produced 5215 bytes on Sep 5 against code that produced
-  5193 on Sep 3. Re-run it and read the number off the build.
-- **One real coverage gap, found Sep 5:** nothing has ever run the game in an
-  **iframe**, which is how js13k serves entries — and the arrow/space scroll fix
-  exists *because* of the iframe. See STATUS.md gap 4 for the recipe. The rig
-  built for it was scratchpad-only and is gone.
-- After those: watch one person play. A full protocol and a live observation
-  sheet are linked from the Sep 5 session-log entry. Fix the single thing they
-  quit over — a clearer journal entry or a shorter walk, **never a softer rule**
-  (CONTENT.md s6).
-
-Before proposing any *new* work, read **DESIGN.md section 9**. It is a list of
-things that look like oversights and are not — an engine, a scene graph, a
-data-driven puzzle format, difficulty settings. The 8.1 KB of unspent budget is
-a deliberate decision, not a gap to fill. Spending it needs an explicit call
-from the user.
-
-If `docs/STATUS.md` disagrees with anything above, STATUS.md wins and this block
-is stale.
-<!-- END: ACTIVE-SESSION-PICKUP -->
+If the branch has merged or changed, this section is stale — delete this block
+and trust STATUS.md.
 <!-- END: ACTIVE-SESSION-PICKUP -->
 
 ## Doc authority
@@ -57,13 +33,22 @@ subject; read before changing anything they cover.
 | [JS13K.md](JS13K.md) | competition rules, build pipeline, submission checklist |
 | [docs/STATUS.md](docs/STATUS.md) | where the work actually is right now |
 
+Before proposing any *new* work, read **DESIGN.md section 9** — a list of
+things that look like oversights and are not. Spending the remaining byte
+budget needs an explicit call from the user; one was made for the items in
+PR #10.
+
 ## Commands
 
 ```sh
 npm run build   # writes game.zip, exits non-zero over 13312 bytes
 npm run max     # slower roadroller search — this is what ships
-npm test        # 76 headless checks, no browser
+npm test        # 137 headless checks, no browser
 npm run shots   # Chrome + Firefox: screenshots, pixel probes, extracted-zip smoke test
 ```
 
-The size gate *is* the build. Never report progress without the byte count.
+The size gate *is* the build. Never report progress without the byte count, and
+never quote one from memory or from a doc: `npm run max` is not deterministic
+(about ±15 bytes between runs). Re-run it and read the number off the build.
+For a stable per-change delta, compare the `minify` candidate, which is
+deterministic.

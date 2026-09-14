@@ -37,9 +37,19 @@ const TIME = [[0,.75],['rgba(90,60,110,.28)',.45],['rgba(18,15,24,.72)',.15]];
 let meta = { journal: [], deaths: 0 };
 let run, scene = 0;            // 0 title, 1 meadow, 2 ending
 
-function newRun() {
-  run = { x: 176, y: 274, bands: {}, berry: 0, name: 0, foal: 0, fx: 200, fy: 170,
+function newRun(x = 176, y = 274) {
+  run = { x, y, bands: {}, berry: 0, name: 0, foal: 0, fx: 200, fy: 170,
           t: 0, dead: 0, end: 0, in: '', blown: 0 };
+  // Wake where you failed (DESIGN.md s2) - but never inside a site that kills
+  // on arrival. Pushed out on the side you came from, or failing that, the stone.
+  for (const s of SITES) if (s.k) {
+    const d = here(s), R = s.r + 8;
+    if (d < R) {
+      run.x = Math.max(10, Math.min(310, s.x + (x - s.x) / (d || 1) * R));
+      run.y = Math.max(50, Math.min(310, s.y + (y - s.y) / (d || 1) * R));
+      if (here(s) < s.r + 4) { run.x = 176; run.y = 274 }
+    }
+  }
   for (const k in keys) keys[k] = 0;
   holdT = 0; fired = 0; msg = ''; msgT = 0; lastBands = 0; touch = null;
 }
@@ -231,7 +241,7 @@ const MOVED = 12;              // logical px before a touch counts as walking
 function anyKey() {
   if (scene == 2) { scene = 0; return 1 }
   if (scene == 0) { scene = 1; newRun(); return 1 }
-  if (run.dead) { newRun(); return 1 }
+  if (run.dead) { newRun(run.x, run.y); return 1 }
   return 0;
 }
 

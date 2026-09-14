@@ -259,6 +259,38 @@ group('state boundary');
   ok(Object.keys(T.meta).sort().join() === 'deaths,journal', 'meta holds exactly journal and deaths');
 }
 
+// ---------- respawn (DESIGN.md s2: wake seconds from where you failed) ----------
+// Only the position carries. Bands and the clock still reset - keeping either
+// would be a checkpoint, which CONTENT.md s6 forbids.
+group('respawn');
+{
+  const T = load();
+  const key = k => T.onkeydown({ key: k, preventDefault() {} });
+  const S = id => T.SITES.find(s => s.id === id);
+  const dist = s => Math.hypot(T.run.x - s.x, T.run.y - s.y);
+  const atStone = () => Math.hypot(T.run.x - 176, T.run.y - 274) < 1;
+
+  begin(T, 20); T.act(at(T, 'bramble'), 0); key('x');
+  ok(!T.run.dead && dist(S('bramble')) < 1, 'you wake where the bramble took you, not at the stone');
+  ok(T.run.t === 0 && !T.run.bands.red, 'the clock and the bands still reset');
+
+  const ring = S('ring');
+  begin(T, 0); T.run.x = ring.x - 25; T.run.y = ring.y; tick(T);
+  ok(T.run.dead, '(setup) the ring at noon killed');
+  key('x'); tick(T);
+  ok(!T.run.dead && dist(ring) >= ring.r && !atStone(), 'waking by the ring at noon puts you just outside it');
+
+  begin(T); T.run.x = 160; T.run.y = 50; tick(T);
+  ok(T.run.dead, '(setup) the gate killed from above');
+  key('x'); tick(T);
+  ok(!T.run.dead && atStone(), 'with no room to push out of the gate, you wake at the stone');
+
+  begin(T, T.CLOSE - 0.01); T.run.x = 300; T.run.y = 300; tick(T);
+  ok(T.run.dead && /Dark/.test(T.run.dead), '(setup) the dark closed');
+  key('x');
+  ok(!T.run.dead && T.run.x === 300 && T.run.y === 300, 'dying on open grass wakes you on that spot');
+}
+
 // ---------- layout: R1, and unambiguous sites ----------
 group('layout');
 {

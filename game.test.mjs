@@ -293,6 +293,34 @@ group('input');
   ok(!T.run.dead && !T.run.bands.red, 'a short still press has not fired either verb yet');
 }
 
+// ---------- a press belongs to its site ----------
+// holdT used to reset only on release, so a partial hold started at one site
+// finished at the next with no fresh press. Verified A/B on 2026-09-09: the
+// same 0.25 s at the hollow killed only after 0.30 s spent at the bramble.
+group('hold ownership');
+{
+  const T = load();
+  const up = k => T.onkeyup({ key: k });
+  // 0.30 s at the bramble - short of HOLD - then carry the key to the hollow
+  const carry = () => {
+    begin(T); at(T, 'bramble');
+    T.keys.e = 1; tick(T, 0.05, 6);
+    at(T, 'hollow');
+  };
+
+  carry(); tick(T, 0.05, 5);
+  ok(!T.run.dead, 'a partial hold does not finish at the next site');
+
+  carry(); tick(T); up('e');
+  ok(!T.run.dead, 'releasing after walking away is not a tap at the new site');
+
+  tick(T);                              // one frame with the key up
+  T.run.berry = 1;
+  T.keys.e = 1; tick(T, 0.05, Math.ceil(T.HOLD / 0.05) + 1);
+  ok(!T.run.dead && T.run.bands.orange, 'a fresh press after release works as normal');
+  T.keys.e = 0; tick(T);
+}
+
 // ---------- audio ----------
 group('audio');
 {

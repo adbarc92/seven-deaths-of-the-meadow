@@ -201,7 +201,7 @@ const chime = i => tone(SCALE[i], .5, .16);
 
 // ---------- input ----------
 const keys = {};
-let holdT = 0, fired = 0, msg = '', msgT = 0, showJournal = 0;
+let holdT = 0, fired = 0, holdS, msg = '', msgT = 0, showJournal = 0;
 let touch = null, touched = 0, lastBands = 0;
 const MOVED = 12;              // logical px before a touch counts as walking
 
@@ -337,10 +337,14 @@ function update(dt) {
 
   const site = nearest();
   const down = keys.e || keys[' '] || (touch && !touch.moved);
-  if (down && site) {
-    holdT += dt;
-    if (holdT >= HOLD && !fired) { fired = 1; act(site, 1) }
-  } else if (!down) { holdT = 0; fired = 0 }
+  // A press belongs to the site it began at. Leaving spends it: otherwise a
+  // partial hold finishes at the next site, and a release there is a tap.
+  if (holdT && site != holdS) { holdT = 0; fired = 1 }
+  if (!down) { holdT = 0; fired = 0 }
+  else if (site && !fired) {
+    holdS = site; holdT += dt;
+    if (holdT >= HOLD) { fired = 1; act(site, 1) }
+  }
 
   // One place to notice a band was set, whatever path set it.
   const n = setBands();
@@ -622,7 +626,7 @@ globalThis.__T = {
   get msg() { return msg }, get scene() { return scene }, setScene(v) { scene = v },
   get journalOpen() { return showJournal }, setJournal(v) { showJournal = v },
   get touch() { return touch }, setTouch(v) { touch = v; touched = 1 },
-  onkeydown: e => onkeydown(e), MOVED,
+  onkeydown: e => onkeydown(e), onkeyup: e => onkeyup(e), MOVED,
 };
 
 // ---------- self-check ----------

@@ -141,6 +141,27 @@ group('sun');
   ok(T.sun()[0] < T.SITES.find(s => s.id === 'gate').x, 'dusk falls before the sun reaches the gate');
 }
 
+// ---------- the carving by touch (the dark's content) ----------
+group('carving by touch');
+{
+  const T = load();
+  const stone = T.SITES.find(s => s.id === 'stone');
+
+  begin(T, T.DUSK + 1);
+  ok(stone.hold === 'read aloud', 'by daylight the stone is read aloud');
+  T.act(at(T, 'stone'), 1);
+  ok(!/WHAT YOU KEEP/.test(T.msg) && T.run.bands.indigo, 'at dusk a hold still reads the carving aloud');
+
+  begin(T, T.DARK + 1);
+  ok(stone.hold === 'trace it' && stone.tap === 'read', 'in the dark the stone offers to trace it');
+  T.act(at(T, 'stone'), 1);
+  ok(/WHAT YOU KEEP, THE MEADOW KEEPS\.$/.test(T.msg), 'tracing in the dark finds the second line');
+  ok(T.meta.journal.includes('The stone, by touch: WHAT YOU KEEP, THE MEADOW KEEPS.'), 'the second line is journalled');
+
+  begin(T, T.DARK + 1); T.act(at(T, 'stone'), 0);
+  ok(!/WHAT YOU KEEP/.test(T.msg), 'reading in the dark is unchanged');
+}
+
 // ---------- the foal (green depends on blue) ----------
 group('foal');
 {
@@ -494,9 +515,9 @@ group('prose');
   for (const s of T.SITES) {
     for (const held of [0, 1]) {
       for (let i = 0; i < 3; i++) {
-        begin(T); T.run.berry = T.run.foal = i === 2 ? 1 : 0; T.run.t = i ? T.DUSK + 1 : 0;
+        begin(T); T.run.berry = T.run.foal = i === 2 ? 1 : 0; T.run.t = [0, T.DUSK + 1, T.DARK + 1][i];
         lines.push(String(s.act(held) || ''));
-        if (s.near) { begin(T); T.run.t = i ? T.DUSK + 1 : 0; lines.push(String(s.near() || '')) }
+        if (s.near) { begin(T); T.run.t = [0, T.DUSK + 1, T.DARK + 1][i]; lines.push(String(s.near() || '')) }
       }
     }
   }

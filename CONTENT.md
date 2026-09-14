@@ -49,11 +49,18 @@ records why.
 | tap (first) | You read the carving aloud. Somewhere behind the light, something agrees. |
 | tap (repeat) | The same six words. They have not changed. |
 | journal | The stone is carved: GIVE, DO NOT TAKE. |
+| hold, in the dark | In the dark the carving is only grooves. Under it your fingers find a second line: WHAT YOU KEEP, THE MEADOW KEEPS. |
+| journal | The stone, by touch: WHAT YOU KEEP, THE MEADOW KEEPS. |
 
 The carving is the tutorial. Hold is the deliberate act and tap the quick
 one, and neither is safe by itself: pressing what is yours gives it, closing
 a hand on what is not keeps it, and keeping is taking. The stone says so in
 six words and nothing else in the game ever mentions the controls.
+
+The second line exists only in the dark and only by touch. It is the grip
+deaths' own sentence, carved — so a player who has died that way finds the
+stone said it all along. The code builds both from one string so they can
+never drift apart.
 
 ### The bramble — red
 
@@ -190,7 +197,7 @@ Site verbs for the prompt bar:
 
 | Site | tap | hold |
 |---|---|---|
-| stone | read | read aloud |
+| stone | read | read aloud (in the dark: trace it) |
 | bramble | reach in | press a thorn |
 | hollow | take honey | set something down |
 | ring | walk in | walk the ring |

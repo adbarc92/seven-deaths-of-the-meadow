@@ -84,8 +84,15 @@ const keep = s => { note('Closed hands are kept.'); return die(s + KEPT) };
 // would describe them. See DESIGN.md section 9.
 const SITES = [
   {
-    id: 'stone', x: 160, y: 262, r: 16, tap: 'read', hold: 'read aloud',
-    act() {
+    id: 'stone', x: 160, y: 262, r: 16, tap: 'read',
+    // In the dark the carving is only grooves, and a hold traces a second
+    // line: the sentence both grip deaths end on. It sets nothing.
+    get hold() { return phase() > 1 ? 'trace it' : 'read aloud' },
+    act(held) {
+      if (held && phase() > 1) {
+        note('The stone, by touch:' + KEPT.toUpperCase());
+        return 'In the dark the carving is only grooves. Under it your fingers find a second line:' + KEPT.toUpperCase();
+      }
       note('The stone is carved: GIVE, DO NOT TAKE.');
       if (run.bands.indigo) return 'The same six words. They have not changed.';
       run.bands.indigo = 1;

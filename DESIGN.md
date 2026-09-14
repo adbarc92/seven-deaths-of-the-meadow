@@ -85,6 +85,11 @@ do not add a sixth.
 first ten seconds and without a tutorial, that the gate wants **acts**, not
 items.
 
+In the **dark** the carving is only grooves, and a hold traces a second line
+under it: *WHAT YOU KEEP, THE MEADOW KEEPS* — the sentence both grip deaths
+end on. It sets nothing. It is the dark's only content, and like the true
+name it is found only by coming back to a place at a different hour.
+
 **Violet** opens on its own when the other six are set. It is the reward, and
 it is the only moment in the game that is purely generous.
 

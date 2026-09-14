@@ -110,3 +110,16 @@ Same construction as the player at 0.6 scale, no horn. That is the entire
 spec — the resemblance is the point, and the missing horn is the only
 information the player needs about what the foal is and what the meadow
 eventually expects it to become.
+
+## 7. The endings
+
+The only drawing on either ending is the rainbow, above the text. It is how
+the player knows they won — the standard ending once read as a loss.
+
+- **Standard:** seven concentric upper arcs, red outermost, each band landing
+  on its note of the gate's arpeggio (one per 190 ms).
+- **True:** the same seven arrive the same way, then are replaced by one wide
+  pale arc on the same footprint. Seven colors come apart into one.
+
+Keep it that sparse. CONTENT.md s4 allows only the title and author line in
+text, and the drawing follows the same restraint.

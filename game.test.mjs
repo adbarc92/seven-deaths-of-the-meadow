@@ -227,6 +227,7 @@ group('endings');
   ok(T.setBands() === 7, 'all seven bands set at the gate');
   T.act(T.SITES.find(s => s.id === 'gate'), 0);
   ok(r.end === 1 && T.scene === 2, 'entering the gate gives the standard ending');
+  ok(r.t === 0, 'entering the gate restarts the clock the ending rainbow counts on');
 
   r = six(T, true);
   ok(r.name, 'the true name is held');

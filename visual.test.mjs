@@ -125,11 +125,21 @@ const [crown, refTop, bowl, refBot] =
 // anything; white on the pale sky made them invisible at zero bands.
 await run(() => { const T = window.__T; T.newRun(); T.draw() });
 const [slot, sky] = await probe([[103, 12], [40, 12]]);
+// The standard ending could not be told from a loss. The rainbow is the win:
+// seven bands on the standard ending, one pale arc on the true one. A large
+// run.t shows the finished picture rather than bands still arriving.
+await run(() => { const T = window.__T; T.setScene(2); T.run.end = 1; T.run.t = 9; T.draw() });
+const [bow, bowBg] = await probe([[160, 28], [20, 28]]);
+await run(() => { const T = window.__T; T.run.end = 2; T.draw() });
+const [one] = await probe([[160, 40]]);
+await run(() => { const T = window.__T; T.setScene(1); T.newRun(); T.draw() });
 
 const checks = [
   [!near(crown, refTop, 8), 'gate arch is painted across the top of its circle'],
   [near(bowl, refBot, 8), 'gate arch is open underneath, not a bowl'],
   [!near(slot, sky, 10), 'unset rainbow slots read against the sky'],
+  [!near(bow, bowBg, 20), 'the standard ending draws the rainbow'],
+  [one.slice(0, 3).every(v => v > 200), 'the true ending draws the seven as one pale arc'],
 ];
 for (const [good, name] of checks) {
   console.log((good ? '  ok   ' : '  FAIL ') + name);
@@ -190,13 +200,14 @@ await new Promise(r => setTimeout(r, 250));
 const deadBright = await meanBright();
 await ship.screenshot({ path: `${OUT}/13-shipped-death.png` });
 
+const shipped = checks.length;
 checks.push(
   [playBright > 12, 'the shipped zip renders something on load'],
   [titleBar - playBar > 40, 'a key press leaves the title and the prompt bar appears'],
   [deadBright < playBright - 25, 'walking into the gate unfinished kills, and the screen dims'],
   [!shipErrors.length, 'the shipped bundle runs clean: ' + shipErrors.join(' | ')],
 );
-for (const [good, name] of checks.slice(3)) {
+for (const [good, name] of checks.slice(shipped)) {
   console.log((good ? '  ok   ' : '  FAIL ') + name);
   if (!good) errors.push('shipped: ' + name);
 }

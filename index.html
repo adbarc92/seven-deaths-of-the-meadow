@@ -159,7 +159,8 @@ const SITES = [
       return 'The seventh band arrives on its own.';
     },
     act(held) {
-      run.end = held && run.name ? 2 : 1; scene = 2;
+      // run.t restarts so the ending's bands can land on these notes
+      run.end = held && run.name ? 2 : 1; scene = 2; run.t = 0;
       SCALE.forEach((f, i) => setTimeout(() => tone(f, 1.2, .13), i * 190));
     }
   },
@@ -311,6 +312,7 @@ let last = 0;
 function frame(now) {
   const dt = Math.min(.05, (now - last) / 1000); last = now;
   if (scene == 1 && !run.dead) update(dt);
+  else if (scene == 2) run.t += dt;
   draw();
   requestAnimationFrame(frame);
 }
@@ -480,6 +482,16 @@ function title() {
 
 function ending() {
   X.fillStyle = '#1a1522'; X.fillRect(0, 0, 320, 320);
+  // The win, drawn: each band lands on its note of the gate's arpeggio. The
+  // true ending then puts the seven back together as one pale arc.
+  if (run.end == 2 && run.t > 1.6) {
+    X.strokeStyle = 'rgba(255,250,255,.85)'; X.lineWidth = 28;
+    X.beginPath(); X.arc(160, 94, 54, Math.PI, 2 * Math.PI); X.stroke();
+  } else HUES.forEach((h, i) => {
+    if (run.t < i * .19) return;
+    X.strokeStyle = h; X.lineWidth = 4;
+    X.beginPath(); X.arc(160, 94, 66 - i * 4, Math.PI, 2 * Math.PI); X.stroke();
+  });
   const t = run.end == 2
     ? 'You say the name written under the tallest face.\nSeven colors come apart into one.\nThe thing on the other side was never a unicorn. It was something divided seven ways a long time ago, and every rule you learned was it asking, politely, to be put back together.\nIt does not need the meadow now.\nNeither, it turns out, do you.'
     : 'The unicorn takes the six colors and gives you the seventh.\nYou leave the meadow whole, having paid nothing you were not asked for.\nIt watches you the entire way out. It does not look away.';

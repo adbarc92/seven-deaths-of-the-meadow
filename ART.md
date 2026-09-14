@@ -27,8 +27,9 @@ Consequences an agent must preserve:
   "the thing you are holding".
 - Sites are **shape-distinct at silhouette**: the bramble is a tangle of arcs,
   the stone is a flat ellipse with rules, the hollow is a dark opening, the
-  ring is a circle of tall stalks, the pond is a filled ellipse, the foal
-  moves. None of them need color to be told apart.
+  ring is a circle of tall stalks, the pond is a filled ellipse, the
+  dandelion is a single stalk under a round puff of spokes (bare once blown),
+  the foal moves. None of them need color to be told apart.
 
 If a proposed puzzle requires distinguishing red from green, it is rejected
 on this rule alone, regardless of how good it is.
@@ -73,6 +74,13 @@ Dusk must be unmistakable at a glance — a player who can't tell what time it
 is cannot solve yellow, and that failure will read as unfairness rather than
 as a puzzle. If the tint is subtle, it is wrong.
 
+The **sun** is the one element that moves with the clock instead of being
+tinted by it — so it is not a re-tint. A yellow disc with a faint halo
+crosses the sky strip from top left, sinking toward the right horizon, and
+is gone at dark. Dusk falls just before it reaches the gate. It keeps clear
+of the HUD and never enters the playfield. It is the time of day for a
+player who cannot read the tint.
+
 ## 4. Drawing conventions
 
 - Logical space is **320×320**, letterboxed and scaled to the smaller viewport
@@ -89,11 +97,15 @@ as a puzzle. If the tint is subtle, it is wrong.
 
 ## 5. The unicorn
 
-The player character is currently four ellipses and a gradient horn. It reads
-at scale but it is the weakest thing on screen, and it is the thing the theme
-is named for.
+The player character is drawn **side-on**: a horizontal body, a neck angled up
+and forward, a small tilted head, four legs in a back pair and a front pair, a
+pink mane down the neck and a pink tail. It is built facing right in its own
+local space under one `translate`/`scale`, and **faces the way it last
+walked** by mirroring — never by a second drawing. Facing is display state,
+not run or meta state.
 
-Budget ~200 bytes for it on Sep 10–11, not before. When improving it:
+It replaced a front-on stack of two ellipses that read as a snowman with a
+horn. When changing it:
 
 - Silhouette first: legs and a mane read at 12px; facial detail does not.
 - The horn gradient (violet → yellow) is the only place the full rainbow
@@ -109,3 +121,18 @@ Same construction as the player at 0.6 scale, no horn. That is the entire
 spec — the resemblance is the point, and the missing horn is the only
 information the player needs about what the foal is and what the meadow
 eventually expects it to become.
+
+## 7. The endings
+
+The only drawing on either ending is the rainbow, above the text. It is how
+the player knows they won — the standard ending once read as a loss.
+
+- **Standard:** seven concentric upper arcs, red outermost, each band landing
+  on its note of the gate's arpeggio (one per 190 ms).
+- **True:** the same seven arrive the same way, then are replaced by one wide
+  pale arc on the same footprint. Seven colors come apart into one.
+- **Whole (third):** the same seven arrive, then close into one full pale
+  ring above the text — the only closed shape on any ending.
+
+Keep it that sparse. CONTENT.md s4 allows only the title and author line in
+text, and the drawing follows the same restraint.

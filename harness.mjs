@@ -41,9 +41,11 @@ export function load(search = '') {
     AudioContext: function () {
       this.currentTime = 0;
       this.destination = {};
-      this.createGain = () => ({ gain: { setValueAtTime() {}, exponentialRampToValueAtTime() {} }, connect() {} });
+      // setTargetAtTime keeps the last target as .v: the game wraps audio in
+      // try/catch, so a missing method would otherwise pass as silence.
+      this.createGain = () => ({ gain: { setValueAtTime() {}, exponentialRampToValueAtTime() {}, setTargetAtTime(v) { this.v = v } }, connect() {} });
       this.createOscillator = () => ({
-        frequency: {}, connect() {},
+        frequency: { setTargetAtTime(v) { this.v = v } }, connect() {},
         start() {}, stop() {},
         set type(v) { }, get type() { return '' },
       });

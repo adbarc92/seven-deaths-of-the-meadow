@@ -77,7 +77,7 @@ do not add a sixth.
 | Red | The bramble | Reaching in openhanded | It takes what it is offered — offer once, deliberately |
 | Orange | The hollow | Taking honey | Something already paid for this; leave the berry in trade |
 | Yellow | The sunflower ring | Standing in it at noon | They turn toward the brightest thing. Come at dusk. |
-| Green | The foal | Letting it follow you anywhere else | It has exactly one place it is allowed to go |
+| Green | The foal | Letting it follow you anywhere else, or keeping it close at the pond | It has exactly one place it is allowed to go, and it is not yours to keep |
 | Blue | The pond | Drinking | Reflections keep what they take. Approach with eyes closed. |
 
 **Indigo** is free. It is carved on the wake stone where the player starts:
@@ -87,6 +87,12 @@ items.
 
 **Violet** opens on its own when the other six are set. It is the reward, and
 it is the only moment in the game that is purely generous.
+
+**The dandelion** carries no band and is not a puzzle chain — nothing
+depends on it. It is where the grip rule (s6) can be learned safely before
+the foal makes it matter: blow the seeds and nothing is asked; close a hand
+on it and the meadow keeps you. Its death ends on the same sentence as
+keeping the foal at the pond, so two sites state one rule.
 
 **The two ambient deaths:**
 - Approaching the gate with fewer than six bands set.
@@ -99,6 +105,7 @@ it is the only moment in the game that is purely generous.
     stone (indigo, free)
       └─ bramble (red) ──gives berry──> hollow (orange)
       └─ sunflower ring (yellow, needs dusk)
+      └─ dandelion (no band; teaches the grip rule the foal needs)
       └─ pond (blue)
            └─ foal (green, must be led to the pond)
                 └─ gate (violet) ──> ending
@@ -126,7 +133,7 @@ finish and then discover there was more will come back. Do not cut it.
 Two scopes. Getting this boundary right is the whole game.
 
 **Run state — destroyed on death.**
-`x, y, bands{}, berry, foalFollowing, clock, dead`
+`x, y, bands{}, berry, foalFollowing, blown, clock, dead`
 
 **Meta state — survives death.**
 `journal[], deaths`
@@ -151,8 +158,15 @@ not by a menu:
 
 This is the entire input vocabulary beyond movement. It carries the theme
 (*GIVE, DO NOT TAKE* is literally tap vs. hold), it is free to explain because
-the carving explains it, and it means every site gets two meanings from one
+the carving explains it, and it means a site can carry two meanings from one
 control.
+
+**Hold is grip, not give.** A hold that presses what is yours — a thorn, a
+kneel — is giving. A hold closed around something that is not yours keeps
+it, and the meadow counts keeping as taking: the dandelion and the foal at
+the pond both kill a hold. Tap is the quick act, reaching in or letting go.
+The carving's six words cover both readings, and no site says which applies.
+Without this, holding at every site was a dominant strategy.
 
 Do not add a second verb. Do not add an inventory screen. Items are single
 flags on run state and the prompt line says what you're holding.

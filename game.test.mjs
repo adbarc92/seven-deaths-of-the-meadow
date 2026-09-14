@@ -140,7 +140,7 @@ group('foal');
   begin(T);
   T.act(at(T, 'pond'), 1);
   T.run.x = foal.x; T.run.y = foal.y; T.run.in = ''; tick(T);
-  T.act(at(T, 'pond'), 1);
+  T.act(at(T, 'pond'), 0);
   ok(!T.run.dead && T.run.bands.green, 'the foal drinks at the pond and sets green');
   ok(!T.run.foal, 'the foal stops following once it has drunk');
 
@@ -150,6 +150,49 @@ group('foal');
   T.run.x = foal.x; T.run.y = foal.y; T.run.in = ''; tick(T);
   at(T, 'ring'); T.run.t = T.DUSK + 1; tick(T);
   ok(T.run.dead, 'walking into an ambient site while following kills');
+}
+
+// ---------- the grip rule ----------
+// Hold is grip: pressing what is yours gives it, closing a hand on what is
+// not keeps it. Two sites carry it so it reads as a rule, not an exception.
+group('grip');
+{
+  const T = load();
+  const foal = T.SITES.find(s => s.id === 'foal');
+  const pond = T.SITES.find(s => s.id === 'pond');
+
+  begin(T); T.act(at(T, 'dandelion'), 0);
+  ok(!T.run.dead && T.run.blown, 'blowing the dandelion is safe and spends it');
+  T.act(at(T, 'dandelion'), 0);
+  ok(!T.run.dead, 'the bare stalk is safe to blow again');
+  T.act(at(T, 'dandelion'), 1);
+  ok(!T.run.dead, 'there is nothing left on the bare stalk to keep');
+  T.newRun();
+  ok(!T.run.blown, 'the dandelion is whole again after a respawn');
+
+  begin(T); T.act(at(T, 'dandelion'), 1);
+  ok(T.run.dead && /What you keep, the meadow keeps/.test(T.run.dead), 'keeping the dandelion kills');
+  ok(T.meta.journal.includes('Closed hands are kept.'), 'keeping is journalled');
+
+  const following = () => {
+    begin(T);
+    T.act(at(T, 'pond'), 1);
+    T.run.x = foal.x; T.run.y = foal.y; T.run.in = ''; tick(T);
+  };
+
+  following();
+  ok(pond.tap === 'let it go' && pond.hold === 'keep it close', 'the pond offers the foal verbs while it follows');
+  T.act(at(T, 'pond'), 1);
+  ok(T.run.dead && /What you keep, the meadow keeps/.test(T.run.dead), 'keeping the foal close at the pond kills');
+
+  following(); T.act(at(T, 'pond'), 0);
+  ok(!T.run.dead && T.run.bands.green && !T.run.foal, 'letting the foal go at the pond sets green');
+
+  begin(T);
+  ok(pond.tap === 'drink' && pond.hold === 'kneel', 'the pond offers its own verbs otherwise');
+
+  following(); T.act(at(T, 'dandelion'), 0);
+  ok(T.run.dead && /same price twice/.test(T.run.dead), 'the foal rule covers the dandelion');
 }
 
 // ---------- the gate and both endings ----------
@@ -169,7 +212,7 @@ group('endings');
     T.act(at(T, 'pond'), 1);                        // blue
     const f = T.SITES.find(s => s.id === 'foal');
     T.run.x = f.x; T.run.y = f.y; T.run.in = ''; tick(T);
-    T.act(at(T, 'pond'), 1);                        // green
+    T.act(at(T, 'pond'), 0);                        // green: let it go
     T.run.t = T.DUSK + 1;
     T.act(at(T, 'ring'), 1);                        // yellow
     if (withName) T.act(at(T, 'ring'), 1);          // the name
@@ -345,7 +388,7 @@ group('prose');
   for (const s of T.SITES) {
     for (const held of [0, 1]) {
       for (let i = 0; i < 3; i++) {
-        begin(T); T.run.berry = i === 2 ? 1 : 0; T.run.t = i ? T.DUSK + 1 : 0;
+        begin(T); T.run.berry = T.run.foal = i === 2 ? 1 : 0; T.run.t = i ? T.DUSK + 1 : 0;
         lines.push(String(s.act(held) || ''));
         if (s.near) { begin(T); T.run.t = i ? T.DUSK + 1 : 0; lines.push(String(s.near() || '')) }
       }

@@ -39,7 +39,7 @@ let run, scene = 0;            // 0 title, 1 meadow, 2 ending
 
 function newRun() {
   run = { x: 176, y: 274, bands: {}, berry: 0, name: 0, foal: 0, fx: 200, fy: 170,
-          t: 0, dead: 0, end: 0, in: '' };
+          t: 0, dead: 0, end: 0, in: '', blown: 0 };
   for (const k in keys) keys[k] = 0;
   holdT = 0; fired = 0; msg = ''; msgT = 0; lastBands = 0; touch = null;
 }
@@ -55,6 +55,12 @@ const setBands = () => BANDS.reduce((n, b) => n + (run.bands[b] ? 1 : 0), 0);
 // The foal follows you into whatever you touch next, and the meadow charges
 // the same price twice. Applies to every site but the pond.
 const FOALDEATH = 'The foal followed you into it. The meadow charges the same price twice.';
+
+// Hold is grip. Pressing what is yours gives it; closing a hand on what is
+// not keeps it, and the meadow counts keeping as taking. Two sites end on
+// the same sentence so it reads as a rule rather than an exception.
+const KEPT = ' What you keep, the meadow keeps.';
+const keep = s => { note('Closed hands are kept.'); return die(s + KEPT) };
 
 // ---------- sites ----------
 // Hardcoded on purpose. Five of these is fewer than the abstraction that
@@ -121,16 +127,20 @@ const SITES = [
     }
   },
   {
-    id: 'pond', x: 250, y: 108, r: 26, tap: 'drink', hold: 'kneel',
+    id: 'pond', x: 250, y: 108, r: 26,
+    // with the foal behind you, the verbs are about the foal, not the water
+    get tap() { return run.foal ? 'let it go' : 'drink' },
+    get hold() { return run.foal ? 'keep it close' : 'kneel' },
     act(held) {
-      if (!held) {
-        note('Reflections keep what they take.');
-        return die('You drank. The water kept the face that leaned over it, and did not give it back.');
-      }
       if (run.foal) {
+        if (held) return keep('You kept it close at the water.');
         run.foal = 0; run.bands.green = 1;
         note('It drank and was not taken.');
         return 'The foal drinks where you could not, and is not taken. It looks at you until you understand it was never the one in danger.';
+      }
+      if (!held) {
+        note('Reflections keep what they take.');
+        return die('You drank. The water kept the face that leaned over it, and did not give it back.');
       }
       run.bands.blue = 1;
       note('The pond only takes what it can see.');
@@ -158,6 +168,18 @@ const SITES = [
     // unattemptable before blue without ever refusing the player anything.
     id: 'foal', x: 200, y: 170, r: 14, tap: 'touch', hold: 'wait',
     near: () => follow(), act: () => follow()
+  },
+  {
+    // Somewhere to learn the grip rule before the foal makes it matter.
+    // No band: nothing depends on it. Kept after the foal so SITES[6] holds.
+    id: 'dandelion', x: 124, y: 172, r: 14, tap: 'blow', hold: 'keep it',
+    act(held) {
+      if (run.blown) return 'The stalk is bare. There is nothing left on it to give.';
+      if (held) return keep('You closed your hand around it.');
+      run.blown = 1;
+      note('The seeds went. Nothing followed them back.');
+      return 'You blow once. The seeds go up, and nothing is asked for them.';
+    }
   }
 ];
 
@@ -392,6 +414,7 @@ function scenery() {
   drawBramble(58, 214);
   drawHollow(262, 210);
   drawStone(160, 262);
+  drawDandelion(124, 172);
   if (run.bands.blue) drawUnicorn(run.fx, run.fy, .62, 0);
   drawUnicorn(run.x, run.y, 1, 1);
 
@@ -527,6 +550,21 @@ function drawBramble(x, y) {
   for (let i = 0; i < 5; i++) {
     const a = i * 1.3;
     X.beginPath(); X.arc(x + Math.cos(a) * 14, y + Math.sin(a) * 11, 2.4, 0, 7); X.fill();
+  }
+}
+
+// One stalk and a pale puff of spokes; once blown, only the stalk. A single
+// head, where the ring is twelve, so the two never share a silhouette.
+function drawDandelion(x, y) {
+  X.strokeStyle = '#7ddb8f'; X.lineWidth = 1.4;
+  X.beginPath(); X.moveTo(x, y + 12); X.lineTo(x, y - 4); X.stroke();
+  if (run.blown) return;
+  X.fillStyle = 'rgba(255,250,255,.7)';
+  X.beginPath(); X.arc(x, y - 4, 7, 0, 7); X.fill();
+  X.strokeStyle = '#9a94a8'; X.lineWidth = .7;
+  for (let i = 0; i < 12; i++) {
+    const a = i * .524;
+    X.beginPath(); X.moveTo(x, y - 4); X.lineTo(x + Math.cos(a) * 7, y - 4 + Math.sin(a) * 7); X.stroke();
   }
 }
 

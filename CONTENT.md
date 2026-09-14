@@ -50,7 +50,9 @@ records why.
 | tap (repeat) | The same six words. They have not changed. |
 | journal | The stone is carved: GIVE, DO NOT TAKE. |
 
-The carving is the tutorial. Tap is take, hold is give — the stone says so in
+The carving is the tutorial. Hold is the deliberate act and tap the quick
+one, and neither is safe by itself: pressing what is yours gives it, closing
+a hand on what is not keeps it, and keeping is taking. The stone says so in
 six words and nothing else in the game ever mentions the controls.
 
 ### The bramble — red
@@ -109,10 +111,27 @@ after it stopped being dangerous* — a thing almost nobody does the first time.
 |---|---|
 | approach | The foal falls in behind you. It does not seem to be deciding anything. |
 | any other site while following | **DEATH** — The foal followed you into it. The meadow charges the same price twice. |
-| at the pond | The foal drinks where you could not, and is not taken. It looks at you until you understand it was never the one in danger. |
+| at the pond, tap | The foal drinks where you could not, and is not taken. It looks at you until you understand it was never the one in danger. |
+| at the pond, hold | **DEATH** — You kept it close at the water. What you keep, the meadow keeps. |
 | journal | The foal follows. |
 | journal | It drank and was not taken. |
 | journal | The meadow charges the same price twice. |
+| journal | Closed hands are kept. |
+
+### The dandelion — no band
+
+| Trigger | Line |
+|---|---|
+| tap | You blow once. The seeds go up, and nothing is asked for them. |
+| tap or hold, once blown | The stalk is bare. There is nothing left on it to give. |
+| hold | **DEATH** — You closed your hand around it. What you keep, the meadow keeps. |
+| journal | The seeds went. Nothing followed them back. |
+| journal | Closed hands are kept. |
+
+Both grip deaths end on the same sentence, the way the foal's two deaths
+share "the meadow charges the same price twice." One inverted site is an
+exception; two sites saying the same thing is a rule the player can induce.
+"Closed hands are kept" answers the bramble's "Open hands are taken whole."
 
 ### The gate — violet
 
@@ -175,8 +194,9 @@ Site verbs for the prompt bar:
 | bramble | reach in | press a thorn |
 | hollow | take honey | set something down |
 | ring | walk in | walk the ring |
-| pond | drink | kneel |
+| pond | drink (with the foal: let it go) | kneel (with the foal: keep it close) |
 | foal | touch | wait |
+| dandelion | blow | keep it |
 | gate | enter | speak |
 
 ---

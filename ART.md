@@ -27,8 +27,9 @@ Consequences an agent must preserve:
   "the thing you are holding".
 - Sites are **shape-distinct at silhouette**: the bramble is a tangle of arcs,
   the stone is a flat ellipse with rules, the hollow is a dark opening, the
-  ring is a circle of tall stalks, the pond is a filled ellipse, the foal
-  moves. None of them need color to be told apart.
+  ring is a circle of tall stalks, the pond is a filled ellipse, the
+  dandelion is a single stalk under a round puff of spokes (bare once blown),
+  the foal moves. None of them need color to be told apart.
 
 If a proposed puzzle requires distinguishing red from green, it is rejected
 on this rule alone, regardless of how good it is.

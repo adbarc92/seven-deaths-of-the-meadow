@@ -10,7 +10,7 @@ was designed item by item and built on `feat/meadow-expansion` — one commit
 per item, each with its byte cost — and is open for review as
 [PR #10](https://github.com/adbarc92/seven-deaths-of-the-meadow/pull/10).
 **No human has played the branch yet.** Nothing is in flight: the tree is
-clean apart from two deliberately untracked folders (see Assumptions).
+clean apart from one deliberately untracked folder (see Assumptions).
 
 **Where the schedule stands.** The deadline (05:00 America/Denver, Sep 13,
 2026) has passed and the entry is submitted. JS13K.md s5 only promises free
@@ -106,10 +106,14 @@ Total: `minify` 5610 → 6708 (+1098); shipped ~5270 → 6151.
 - **No tag was created.** The submitted build is most likely `7aa80d1` (the tip
   of `main` at the deadline), but which zip was uploaded was never confirmed,
   so tagging was left to the author.
-- **`docs/superpowers/` and `games/` were left untracked on purpose.** The first
-  is the superseded horn spec, deliberately never committed; the second is a
-  separate prototype, *Bandwidth*, with its own docs and build, unrelated to
-  this entry.
+- **`docs/superpowers/` is left untracked on purpose** — the superseded horn
+  spec, deliberately never committed.
+- **Bandwidth is not part of this repo.** The separate prototype was split out
+  on 2026-09-10 into the private repo
+  [`adbarc92/bandwidth`](https://github.com/adbarc92/bandwidth) (local clone:
+  `../bandwidth`), and **archived on 2026-09-14**. A leftover untracked copy in
+  `games/bandwidth` was hash-checked identical to the clone and deleted; it
+  was never in this repo's git history.
 
 ---
 

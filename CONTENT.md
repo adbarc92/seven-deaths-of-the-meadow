@@ -93,6 +93,9 @@ never drift apart.
 | journal | They turn toward the brightest thing. |
 | journal | At noon nothing outshines the ring. |
 | journal | Under the tallest face, a name, written small. |
+| hold in the dark, yellow set, no name | Under the tallest face there is writing, and no light to read it by. |
+| hold in the dark, name found | In the dark the writing is only grooves. The name runs on past where the letters stopped. You do not say it yet. → **sets the full name** |
+| journal | By touch, the name under the face runs longer. |
 
 The third journal line is written against section 1 rather than quoted from
 the original draft: without it the one replay hook in the game is left to the
@@ -102,6 +105,10 @@ to prevent. Ten words, observational, no causation.
 The second dusk visit is the only optional content in the game and the only
 route to the second ending. It is deliberately gated on *going back to a place
 after it stopped being dangerous* — a thing almost nobody does the first time.
+
+A third visit, in the dark, is the only route to the third ending. The name
+read at dusk is what makes the grooves legible; without it there is writing
+and no light.
 
 ### The pond — blue
 
@@ -180,6 +187,22 @@ exception; two sites saying the same thing is a rule the player can induce.
 The true ending's job is to recontextualize every death as a request rather
 than a trap. Do not soften it, do not add a coda, do not add a credits crawl
 beyond the title and author line.
+
+**Whole** — speaking the full name, found by touch in the dark:
+
+> You say the whole name, the part written small and the part you found by touch.
+> The last of it is yours.
+> Seven colors come apart into one, and the one is not waiting on the other
+> side of the gate.
+> Every price the meadow took from you, it was keeping for this.
+> You walk out of the meadow whole, and it goes with you.
+
+**First draft — open for revision** (tracked in docs/STATUS.md). Its job is
+to go one step past the true ending without undercutting it: the true ending
+says the thing was asking to be put back together; this one says the player
+was one of the pieces, so every death and "what you keep, the meadow keeps"
+becomes the meadow holding parts of you for this moment. "Whole" echoes the
+standard ending on purpose.
 
 ---
 

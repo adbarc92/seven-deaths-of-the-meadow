@@ -121,12 +121,18 @@ without adding content.
 
 ### Ending
 
-Two endings, gated on knowledge, not on completion.
+Three endings, gated on knowledge, not on completion.
 
 The unicorn's **true name** is discoverable only in the sunflower ring at
 dusk — i.e. only if the player goes back to a site *after* it stopped being
 dangerous, which almost nobody does the first time. Speaking it at the gate
 gives the second ending.
+
+The **full name** takes one more return to the ring, in the dark, with the
+name already found at dusk: by touch it runs on past where the letters
+stopped. Speaking it gives the third ending. Two returns to one site, both
+after it stopped being dangerous, and still no item. The third ending's
+prose is a first draft (see docs/STATUS.md).
 
 This costs roughly 300 bytes and is the entry's replay hook. Voters who
 finish and then discover there was more will come back. Do not cut it.

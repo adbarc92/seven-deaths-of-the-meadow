@@ -131,6 +131,8 @@ the player knows they won — the standard ending once read as a loss.
   on its note of the gate's arpeggio (one per 190 ms).
 - **True:** the same seven arrive the same way, then are replaced by one wide
   pale arc on the same footprint. Seven colors come apart into one.
+- **Whole (third):** the same seven arrive, then close into one full pale
+  ring above the text — the only closed shape on any ending.
 
 Keep it that sparse. CONTENT.md s4 allows only the title and author line in
 text, and the drawing follows the same restraint.

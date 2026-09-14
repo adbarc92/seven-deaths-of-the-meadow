@@ -284,6 +284,38 @@ group('endings');
   ok(r.end === 1, 'speaking without the name still gives the standard ending');
 }
 
+// ---------- the full name and the third ending ----------
+// Two returns to the ring after it stopped being dangerous: at dusk the name,
+// in the dark the rest of it. Knowledge only - no item gates the ending.
+group('the full name');
+{
+  const T = load();
+  const ring = () => T.act(at(T, 'ring'), 1);
+
+  begin(T, T.DUSK + 1); ring(); T.run.t = T.DARK + 1; ring();
+  ok(T.run.bands.yellow && !T.run.name && /no light/.test(T.msg), 'in the dark a name never read cannot be found');
+
+  begin(T, T.DUSK + 1); ring(); ring(); ring();
+  ok(T.run.name === 1, 'at dusk the name stays the name');
+  T.run.t = T.DARK + 1; ring();
+  ok(T.run.name === 2 && /runs on/.test(T.msg), 'in the dark the name runs longer');
+  ok(T.meta.journal.includes('By touch, the name under the face runs longer.'), 'the longer name is journalled');
+  ring();
+  ok(T.run.name === 2, 'the full name stays found');
+
+  const gate = T.SITES.find(s => s.id === 'gate');
+  for (const [name, held, end] of [[2, 1, 3], [1, 1, 2], [0, 1, 1], [2, 0, 1]]) {
+    begin(T); T.run.name = name; gate.act(held);
+    ok(T.run.end === end, `gate: name ${name}, ${held ? 'speak' : 'enter'} gives ending ${end}`);
+  }
+
+  let threw = '';
+  try { T.setScene(2); T.run.end = 3; T.run.t = 9; T.draw() } catch (e) { threw = e.message }
+  ok(!threw, 'the third ending draws: ' + threw);
+  const n = T.lines(T.ENDINGS[2], 250, 7), top = 150 - n * 5;
+  ok(top > 30 && top + n * 10 < 282, 'the third ending fits between the top and the title');
+}
+
 // ---------- the state boundary (DESIGN.md s5) ----------
 group('state boundary');
 {

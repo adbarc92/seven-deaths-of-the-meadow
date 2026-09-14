@@ -141,7 +141,12 @@ await run(() => { const T = window.__T; T.setFace(1); T.newRun(); T.draw() });
 await run(() => { const T = window.__T; T.setScene(2); T.run.end = 1; T.run.t = 9; T.draw() });
 const [bow, bowBg] = await probe([[160, 28], [20, 28]]);
 await run(() => { const T = window.__T; T.run.end = 2; T.draw() });
-const [one] = await probe([[160, 40]]);
+const [one, half] = await probe([[160, 40], [160, 98]]);
+// the third ending closes the seven into a whole ring; its lower edge is
+// somewhere the true ending's half-arc never reaches
+await run(() => { const T = window.__T; T.run.end = 3; T.draw() });
+const [whole] = await probe([[160, 98]]);
+const fit3 = await run(() => { const T = window.__T, n = T.lines(T.ENDINGS[2], 250, 7); return { n, top: 150 - n * 5 } });
 await run(() => { const T = window.__T; T.setScene(1); T.newRun(); T.draw() });
 
 const checks = [
@@ -153,6 +158,11 @@ const checks = [
     'the unicorn is side-on and faces the way it walks'],
   [!near(bow, bowBg, 20), 'the standard ending draws the rainbow'],
   [one.slice(0, 3).every(v => v > 200), 'the true ending draws the seven as one pale arc'],
+  [whole.slice(0, 3).every(v => v > 200) && !half.slice(0, 3).every(v => v > 200),
+    'the third ending closes the seven into a whole ring'],
+  // ring's lower edge is y 102; 6 px of glyph ascent above the first baseline
+  [fit3.top - 6 > 102 && fit3.top + fit3.n * 10 < 282,
+    `the third ending clears the ring and the title (${fit3.n} lines)`],
 ];
 for (const [good, name] of checks) {
   console.log((good ? '  ok   ' : '  FAIL ') + name);
@@ -249,8 +259,8 @@ if (!FIREFOX) {
     const T = window.__T;
     T.setScene(2); T.run.end = 2; T.draw();
     const t = 'You say the name written under the tallest face.\nSeven colors come apart into one.\nThe thing on the other side was never a unicorn. It was something divided seven ways a long time ago, and every rule you learned was it asking, politely, to be put back together.\nIt does not need the meadow now.\nNeither, it turns out, do you.';
-    const n = T.lines(t, 250, 7);
-    return { n, top: 150 - n * 5, bottom: 150 + n * 5 };
+    const n = T.lines(t, 250, 7), n3 = T.lines(T.ENDINGS[2], 250, 7);
+    return { n, top: 150 - n * 5, bottom: 150 + n * 5, n3, top3: 150 - n3 * 5 };
   });
   await fp.screenshot({ path: `${OUT}/14-firefox-ending.png` });
   await fp.evaluate(() => { const T = window.__T; T.setScene(1); T.newRun(); T.draw() });
@@ -260,6 +270,8 @@ if (!FIREFOX) {
     [!ffErrors.length, 'Firefox runs it clean: ' + ffErrors.join(' | ')],
     [fit.top > 30, `the true ending clears the top in Firefox (${fit.n} lines)`],
     [fit.bottom < 282, 'the true ending clears the title line in Firefox'],
+    [fit.top3 - 6 > 102 && fit.top3 + fit.n3 * 10 < 282,
+      `the third ending clears the ring and the title in Firefox (${fit.n3} lines)`],
   ];
   for (const [good, name] of ffChecks) {
     console.log((good ? '  ok   ' : '  FAIL ') + name);

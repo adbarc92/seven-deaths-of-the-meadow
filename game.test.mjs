@@ -391,6 +391,20 @@ group('input');
   ok(!T.run.dead && !T.run.bands.red, 'a short still press has not fired either verb yet');
 }
 
+// ---------- the journal cue ----------
+// Nothing told a player J did anything, and most lines are written under the
+// death overlay. The HUD label stays dark from a new line until it is read.
+group('journal cue');
+{
+  const T = load();
+  begin(T); T.act(at(T, 'stone'), 0);
+  ok(T.unread, 'a new journal line marks the journal unread');
+  T.setJournal(1); T.draw(); T.setJournal(0);
+  ok(!T.unread, 'opening the journal clears it');
+  T.act(at(T, 'stone'), 0);
+  ok(!T.unread, 'a line already remembered does not mark it again');
+}
+
 // ---------- a press belongs to its site ----------
 // holdT used to reset only on release, so a partial hold started at one site
 // finished at the next with no fresh press. Verified A/B on 2026-09-09: the

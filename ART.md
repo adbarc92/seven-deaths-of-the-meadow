@@ -74,6 +74,13 @@ Dusk must be unmistakable at a glance — a player who can't tell what time it
 is cannot solve yellow, and that failure will read as unfairness rather than
 as a puzzle. If the tint is subtle, it is wrong.
 
+The **sun** is the one element that moves with the clock instead of being
+tinted by it — so it is not a re-tint. A yellow disc with a faint halo
+crosses the sky strip from top left, sinking toward the right horizon, and
+is gone at dark. Dusk falls just before it reaches the gate. It keeps clear
+of the HUD and never enters the playfield. It is the time of day for a
+player who cannot read the tint.
+
 ## 4. Drawing conventions
 
 - Logical space is **320×320**, letterboxed and scaled to the smaller viewport

@@ -119,6 +119,28 @@ group('clock');
   T.run.t = T.DARK + 1; ok(T.phase() === 2, 'dark after DARK');
 }
 
+// ---------- the sun (the clock, drawn) ----------
+group('sun');
+{
+  const T = load();
+  begin(T, 0); const noon = T.sun();
+  T.run.t = T.DUSK; const dusk = T.sun();
+  T.run.t = T.DARK; const dark = T.sun();
+  ok(noon[0] < dusk[0] && dusk[0] < dark[0], 'the sun moves right as the clock runs');
+
+  // halo radius 11; HUD bands and text occupy x 96-222, y 6-28
+  let clash = '';
+  for (let t = 0; t <= T.DARK; t += 0.5) {
+    T.run.t = t; const [x, y] = T.sun();
+    if (x + 11 > 96 && x - 11 < 222 && y - 11 <= 28) clash = 'HUD at t=' + t;
+    if (y >= 60) clash = 'playfield at t=' + t;
+  }
+  ok(!clash, 'the sun stays clear of the HUD and inside the sky ' + clash);
+
+  T.run.t = T.DUSK;
+  ok(T.sun()[0] < T.SITES.find(s => s.id === 'gate').x, 'dusk falls before the sun reaches the gate');
+}
+
 // ---------- the foal (green depends on blue) ----------
 group('foal');
 {

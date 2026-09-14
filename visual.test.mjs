@@ -124,7 +124,7 @@ const [crown, refTop, bowl, refBot] =
 // Unset bands are the only thing telling the player there are seven of
 // anything; white on the pale sky made them invisible at zero bands.
 await run(() => { const T = window.__T; T.newRun(); T.draw() });
-const [slot, sky] = await probe([[103, 12], [40, 12]]);
+const [slot, sky, sunPx, sunSky] = await probe([[103, 12], [40, 12], [20, 34], [60, 34]]);
 // The standard ending could not be told from a loss. The rainbow is the win:
 // seven bands on the standard ending, one pale arc on the true one. A large
 // run.t shows the finished picture rather than bands still arriving.
@@ -138,6 +138,7 @@ const checks = [
   [!near(crown, refTop, 8), 'gate arch is painted across the top of its circle'],
   [near(bowl, refBot, 8), 'gate arch is open underneath, not a bowl'],
   [!near(slot, sky, 10), 'unset rainbow slots read against the sky'],
+  [!near(sunPx, sunSky, 20), 'the sun is drawn in the noon sky'],
   [!near(bow, bowBg, 20), 'the standard ending draws the rainbow'],
   [one.slice(0, 3).every(v => v > 200), 'the true ending draws the seven as one pale arc'],
 ];

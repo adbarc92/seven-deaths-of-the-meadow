@@ -60,6 +60,9 @@ const die = s => {
   return run.dead;
 };
 const phase = () => run.t < DUSK ? 0 : run.t < DARK ? 1 : 2;
+// The clock's position, drawn: the sun sinks from top left toward the right
+// horizon and is gone at dark. Dusk falls just before it reaches the gate.
+const sun = () => { const p = Math.min(1, run.t / DARK); return [20 + 280 * p, 34 + 22 * p] };
 const setBands = () => BANDS.reduce((n, b) => n + (run.bands[b] ? 1 : 0), 0);
 
 // The foal follows you into whatever you touch next, and the meadow charges
@@ -412,6 +415,13 @@ function scenery() {
   const sky = X.createLinearGradient(0, 0, 0, 60);
   sky.addColorStop(0, '#ffe9f3'); sky.addColorStop(1, '#cfeecb');
   X.fillStyle = sky; X.fillRect(0, 0, 320, 60);
+  if (phase() < 2) {
+    const [sx, sy] = sun();
+    X.fillStyle = 'rgba(255,255,255,.35)';
+    X.beginPath(); X.arc(sx, sy, 11, 0, 7); X.fill();
+    X.fillStyle = '#ffe066';
+    X.beginPath(); X.arc(sx, sy, 6, 0, 7); X.fill();
+  }
 
   X.globalAlpha = fa;
   for (const f of flowers) {
@@ -681,7 +691,7 @@ function drawUnicorn(x, y, k, horn) {
 // shipped bundle by the /*TEST*/ fence, so these cost zero bytes.
 globalThis.__T = {
   SITES, BANDS, HUES, newRun, nearest, update, act, keys, follow, selfTest, lines,
-  DUSK, DARK, CLOSE, HOLD, setBands, phase, layout, draw,
+  DUSK, DARK, CLOSE, HOLD, setBands, phase, layout, draw, sun,
   get run() { return run }, get meta() { return meta },
   get msg() { return msg }, get scene() { return scene }, setScene(v) { scene = v },
   get journalOpen() { return showJournal }, setJournal(v) { showJournal = v },

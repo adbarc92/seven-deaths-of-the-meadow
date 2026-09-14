@@ -449,6 +449,31 @@ group('audio');
   ok(!threw, 'audio never throws: ' + threw);
 }
 
+// ---------- ambience ----------
+// Asserts what the game asks the audio graph for, not what a speaker plays.
+group('ambience');
+{
+  const T = load();
+  const drone = () => T.hum[0][1].gain.v, bees = () => T.hum[1][1].gain.v;
+
+  begin(T, 0); T.ambience(); const noon = drone();
+  T.run.t = T.DUSK + 1; T.ambience(); const dusk = drone();
+  T.run.t = T.DARK + 1; T.ambience(); const dark = drone();
+  ok(noon > dusk && dusk > dark && dark > 0, 'the drone falls with the hour');
+
+  begin(T); at(T, 'hollow'); T.ambience(); const near = bees();
+  at(T, 'stone'); T.ambience(); const far = bees();
+  ok(near > 0 && far === 0, 'bees are heard at the hollow and not at the stone');
+
+  begin(T); T.run.dead = 'x'; T.ambience();
+  ok(drone() === 0 && bees() === 0, 'the meadow is silent under the death overlay');
+
+  begin(T); at(T, 'pond'); T.keys.e = 1; tick(T, 0.05, 3); T.ambience();
+  ok(drone() === 0 && !T.run.dead, 'the drone drops out while kneeling at the pond');
+  T.keys.e = 0; tick(T); T.ambience();
+  ok(drone() > 0, 'and returns when you stand');
+}
+
 // ---------- prose rules (CONTENT.md s1) ----------
 group('prose');
 {

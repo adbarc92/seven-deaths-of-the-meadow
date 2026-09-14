@@ -238,6 +238,30 @@ function tone(f, d, vol, type) {
 const SCALE = [523, 587, 659, 784, 880, 1047, 1175];
 const chime = i => tone(SCALE[i], .5, .16);
 
+// The meadow between events: a drone that falls with the hour, bees near the
+// hollow, and silence while you kneel at the pond with your eyes shut. Only
+// run once the meadow has been reached, which takes a gesture - so the
+// context is never created early and left suspended.
+let hum;
+function ambience() {
+  try {
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    if (!hum) hum = [['sine', 330], ['triangle', 220]].map(([type, f]) => {
+      const o = AC.createOscillator(), g = AC.createGain();
+      o.type = type; o.frequency.value = f; g.gain.value = 0;
+      o.connect(g); g.connect(AC.destination); o.start();
+      return [o, g];
+    });
+    const t = AC.currentTime, p = phase(), live = scene == 1 && !run.dead;
+    const kneel = holdT && holdS && holdS.id == 'pond';
+    hum[0][0].frequency.setTargetAtTime([330, 247, 165][p], t, 1);
+    hum[0][1].gain.setTargetAtTime(live && !kneel ? [.03, .02, .012][p] : 0, t, .3);
+    hum[1][0].frequency.setTargetAtTime(220 + Math.sin(run.t * 40) * 8, t, .02);
+    // SITES[2] is the hollow
+    hum[1][1].gain.setTargetAtTime(live ? Math.max(0, 1 - here(SITES[2]) / 80) * .02 : 0, t, .1);
+  } catch (e) {}
+}
+
 // ---------- input ----------
 const keys = {};
 let holdT = 0, fired = 0, holdS, msg = '', msgT = 0, showJournal = 0;
@@ -329,6 +353,7 @@ function frame(now) {
   const dt = Math.min(.05, (now - last) / 1000); last = now;
   if (scene == 1 && !run.dead) update(dt);
   else if (scene == 2) run.t += dt;
+  if (AC || scene == 1) ambience();
   draw();
   requestAnimationFrame(frame);
 }
@@ -695,7 +720,8 @@ function drawUnicorn(x, y, k, horn) {
 // shipped bundle by the /*TEST*/ fence, so these cost zero bytes.
 globalThis.__T = {
   SITES, BANDS, HUES, newRun, nearest, update, act, keys, follow, selfTest, lines,
-  DUSK, DARK, CLOSE, HOLD, setBands, phase, layout, draw, sun,
+  DUSK, DARK, CLOSE, HOLD, setBands, phase, layout, draw, sun, ambience,
+  get hum() { return hum },
   get run() { return run }, get meta() { return meta }, get unread() { return unread },
   get msg() { return msg }, get scene() { return scene }, setScene(v) { scene = v },
   get journalOpen() { return showJournal }, setJournal(v) { showJournal = v },

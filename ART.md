@@ -97,11 +97,15 @@ player who cannot read the tint.
 
 ## 5. The unicorn
 
-The player character is currently four ellipses and a gradient horn. It reads
-at scale but it is the weakest thing on screen, and it is the thing the theme
-is named for.
+The player character is drawn **side-on**: a horizontal body, a neck angled up
+and forward, a small tilted head, four legs in a back pair and a front pair, a
+pink mane down the neck and a pink tail. It is built facing right in its own
+local space under one `translate`/`scale`, and **faces the way it last
+walked** by mirroring — never by a second drawing. Facing is display state,
+not run or meta state.
 
-Budget ~200 bytes for it on Sep 10–11, not before. When improving it:
+It replaced a front-on stack of two ellipses that read as a snowman with a
+horn. When changing it:
 
 - Silhouette first: legs and a mane read at 12px; facial detail does not.
 - The horn gradient (violet → yellow) is the only place the full rainbow

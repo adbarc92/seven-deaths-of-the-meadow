@@ -125,6 +125,16 @@ const [crown, refTop, bowl, refBot] =
 // anything; white on the pale sky made them invisible at zero bands.
 await run(() => { const T = window.__T; T.newRun(); T.draw() });
 const [slot, sky, sunPx, sunSky] = await probe([[103, 12], [40, 12], [20, 34], [60, 34]]);
+// The unicorn is side-on and faces the way it walks, so its head is ahead of
+// the body and up. The old drawing stacked the head on top, facing out.
+// (+10, -7) is inside the head only: clear of the neck's round cap at (7, -7)
+// and below the horn, so a head moved elsewhere cannot pass on the neck.
+const white = p => p.slice(0, 3).every(v => v > 235);
+await run(() => { const T = window.__T; T.newRun(); T.run.x = 230; T.run.y = 290; T.setFace(1); T.draw() });
+const [aheadR, behindR] = await probe([[240, 283], [220, 283]]);
+await run(() => { const T = window.__T; T.setFace(-1); T.draw() });
+const [aheadL, behindL] = await probe([[220, 283], [240, 283]]);
+await run(() => { const T = window.__T; T.setFace(1); T.newRun(); T.draw() });
 // The standard ending could not be told from a loss. The rainbow is the win:
 // seven bands on the standard ending, one pale arc on the true one. A large
 // run.t shows the finished picture rather than bands still arriving.
@@ -139,6 +149,8 @@ const checks = [
   [near(bowl, refBot, 8), 'gate arch is open underneath, not a bowl'],
   [!near(slot, sky, 10), 'unset rainbow slots read against the sky'],
   [!near(sunPx, sunSky, 20), 'the sun is drawn in the noon sky'],
+  [white(aheadR) && !white(behindR) && white(aheadL) && !white(behindL),
+    'the unicorn is side-on and faces the way it walks'],
   [!near(bow, bowBg, 20), 'the standard ending draws the rainbow'],
   [one.slice(0, 3).every(v => v > 200), 'the true ending draws the seven as one pale arc'],
 ];

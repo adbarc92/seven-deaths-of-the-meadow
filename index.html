@@ -39,6 +39,7 @@ let run, scene = 0;            // 0 title, 1 meadow, 2 ending
 // Display state, like showJournal - not meta. The HUD label stays dark from a
 // new line until the journal is next opened.
 let unread = 0;
+let face = 1;                  // display state too: 1 faces right, -1 left
 
 function newRun(x = 176, y = 274) {
   run = { x, y, bands: {}, berry: 0, name: 0, foal: 0, fx: 200, fy: 170,
@@ -377,6 +378,7 @@ function update(dt) {
     const d = Math.hypot(touch.dx, touch.dy) || 1;
     mx = touch.dx / d; my = touch.dy / d;
   }
+  if (mx) face = mx > 0 ? 1 : -1;
   run.x = Math.max(10, Math.min(310, run.x + mx * sp));
   run.y = Math.max(50, Math.min(310, run.y + my * sp));
 
@@ -695,23 +697,29 @@ function drawUnicorn(x, y, k, horn) {
   const moving = keys.a || keys.d || keys.w || keys.s ||
     keys.arrowleft || keys.arrowright || keys.arrowup || keys.arrowdown;
   if (horn && moving) y += Math.sin(run.t * 11) * .8;
-  X.strokeStyle = '#fffaff'; X.lineWidth = 1.6 * k; X.lineCap = 'round';
-  for (let i = 0; i < 4; i++) {
-    const lx = x + (i < 2 ? -3 : 3) * k, ly = y + 3 * k;
-    X.beginPath(); X.moveTo(lx, ly); X.lineTo(lx + (i % 2 ? 1 : -1) * k, ly + 4.5 * k); X.stroke();
+  X.lineCap = 'round';
+  // Side-on, drawn facing right in local space and mirrored to face the way
+  // it last walked. One transform, so the foal is the same call at 0.62.
+  X.save();
+  X.translate(x, y); X.scale(k * face, k);
+  X.strokeStyle = X.fillStyle = '#fffaff';
+  X.lineWidth = 1.6;                                   // a back pair, a front pair
+  for (const lx of [-5, -3, 3, 5]) { X.beginPath(); X.moveTo(lx, 2); X.lineTo(lx, 8); X.stroke() }
+  X.beginPath(); X.ellipse(0, 0, 7, 4, 0, 0, 7); X.fill();            // body
+  X.lineWidth = 3.4;
+  X.beginPath(); X.moveTo(4, -1); X.lineTo(7, -7); X.stroke();          // neck
+  X.beginPath(); X.ellipse(8.5, -8, 3.4, 2.2, .45, 0, 7); X.fill();     // head, nose down
+  X.strokeStyle = '#f2d9ea'; X.lineWidth = 1.3;                        // mane and tail
+  X.beginPath(); X.moveTo(6, -10); X.quadraticCurveTo(3, -6, 3, -2); X.stroke();
+  X.beginPath(); X.moveTo(-7, -1); X.quadraticCurveTo(-11, 0, -10, 5); X.stroke();
+  if (horn) {
+    // the only place the full palette touches the player
+    const hg = X.createLinearGradient(0, -16, 0, -9);
+    hg.addColorStop(0, '#d98cff'); hg.addColorStop(1, '#ffe066');
+    X.fillStyle = hg;
+    X.beginPath(); X.moveTo(7.2, -9.5); X.lineTo(9.6, -10.2); X.lineTo(12, -16); X.fill();
   }
-  X.fillStyle = '#fffaff';
-  X.beginPath(); X.ellipse(x, y, 6 * k, 4.5 * k, 0, 0, 7); X.fill();
-  X.beginPath(); X.ellipse(x, y - 6 * k, 3.4 * k, 3.4 * k, 0, 0, 7); X.fill();
-  X.strokeStyle = '#f2d9ea'; X.lineWidth = 1.2 * k;   // mane and tail
-  X.beginPath(); X.moveTo(x + 2 * k, y - 7 * k); X.lineTo(x + 4.5 * k, y - 1 * k); X.stroke();
-  X.beginPath(); X.moveTo(x + 5.5 * k, y - 1 * k); X.lineTo(x + 8 * k, y + 3 * k); X.stroke();
-  if (!horn) return;
-  // the only place the full palette touches the player
-  const hg = X.createLinearGradient(x, y - 15, x, y - 8);
-  hg.addColorStop(0, '#d98cff'); hg.addColorStop(1, '#ffe066');
-  X.fillStyle = hg;
-  X.beginPath(); X.moveTo(x - 1.6, y - 8); X.lineTo(x + 1.6, y - 8); X.lineTo(x, y - 15); X.fill();
+  X.restore();
 }
 
 /*TEST*/
@@ -721,7 +729,7 @@ function drawUnicorn(x, y, k, horn) {
 globalThis.__T = {
   SITES, BANDS, HUES, newRun, nearest, update, act, keys, follow, selfTest, lines,
   DUSK, DARK, CLOSE, HOLD, setBands, phase, layout, draw, sun, ambience,
-  get hum() { return hum },
+  get hum() { return hum }, get face() { return face }, setFace(v) { face = v },
   get run() { return run }, get meta() { return meta }, get unread() { return unread },
   get msg() { return msg }, get scene() { return scene }, setScene(v) { scene = v },
   get journalOpen() { return showJournal }, setJournal(v) { showJournal = v },

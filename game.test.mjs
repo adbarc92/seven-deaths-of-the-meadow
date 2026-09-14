@@ -391,6 +391,18 @@ group('input');
   ok(!T.run.dead && !T.run.bands.red, 'a short still press has not fired either verb yet');
 }
 
+// ---------- facing ----------
+group('facing');
+{
+  const T = load();
+  begin(T); T.keys.a = 1; tick(T); T.keys.a = 0;
+  ok(T.face === -1, 'walking left faces left');
+  T.keys.w = 1; tick(T); T.keys.w = 0;
+  ok(T.face === -1, 'walking straight up keeps the facing');
+  T.keys.d = 1; tick(T); T.keys.d = 0;
+  ok(T.face === 1, 'walking right faces right');
+}
+
 // ---------- the journal cue ----------
 // Nothing told a player J did anything, and most lines are written under the
 // death overlay. The HUD label stays dark from a new line until it is read.

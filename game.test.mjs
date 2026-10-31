@@ -119,6 +119,49 @@ group('clock');
   T.run.t = T.DARK + 1; ok(T.phase() === 2, 'dark after DARK');
 }
 
+// ---------- the sun (the clock, drawn) ----------
+group('sun');
+{
+  const T = load();
+  begin(T, 0); const noon = T.sun();
+  T.run.t = T.DUSK; const dusk = T.sun();
+  T.run.t = T.DARK; const dark = T.sun();
+  ok(noon[0] < dusk[0] && dusk[0] < dark[0], 'the sun moves right as the clock runs');
+
+  // halo radius 11; HUD bands and text occupy x 96-222, y 6-28
+  let clash = '';
+  for (let t = 0; t <= T.DARK; t += 0.5) {
+    T.run.t = t; const [x, y] = T.sun();
+    if (x + 11 > 96 && x - 11 < 222 && y - 11 <= 28) clash = 'HUD at t=' + t;
+    if (y >= 60) clash = 'playfield at t=' + t;
+  }
+  ok(!clash, 'the sun stays clear of the HUD and inside the sky ' + clash);
+
+  T.run.t = T.DUSK;
+  ok(T.sun()[0] < T.SITES.find(s => s.id === 'gate').x, 'dusk falls before the sun reaches the gate');
+}
+
+// ---------- the carving by touch (the dark's content) ----------
+group('carving by touch');
+{
+  const T = load();
+  const stone = T.SITES.find(s => s.id === 'stone');
+
+  begin(T, T.DUSK + 1);
+  ok(stone.hold === 'read aloud', 'by daylight the stone is read aloud');
+  T.act(at(T, 'stone'), 1);
+  ok(!/WHAT YOU KEEP/.test(T.msg) && T.run.bands.indigo, 'at dusk a hold still reads the carving aloud');
+
+  begin(T, T.DARK + 1);
+  ok(stone.hold === 'trace it' && stone.tap === 'read', 'in the dark the stone offers to trace it');
+  T.act(at(T, 'stone'), 1);
+  ok(/WHAT YOU KEEP, THE MEADOW KEEPS\.$/.test(T.msg), 'tracing in the dark finds the second line');
+  ok(T.meta.journal.includes('The stone, by touch: WHAT YOU KEEP, THE MEADOW KEEPS.'), 'the second line is journalled');
+
+  begin(T, T.DARK + 1); T.act(at(T, 'stone'), 0);
+  ok(!/WHAT YOU KEEP/.test(T.msg), 'reading in the dark is unchanged');
+}
+
 // ---------- the foal (green depends on blue) ----------
 group('foal');
 {
@@ -140,7 +183,7 @@ group('foal');
   begin(T);
   T.act(at(T, 'pond'), 1);
   T.run.x = foal.x; T.run.y = foal.y; T.run.in = ''; tick(T);
-  T.act(at(T, 'pond'), 1);
+  T.act(at(T, 'pond'), 0);
   ok(!T.run.dead && T.run.bands.green, 'the foal drinks at the pond and sets green');
   ok(!T.run.foal, 'the foal stops following once it has drunk');
 
@@ -150,6 +193,49 @@ group('foal');
   T.run.x = foal.x; T.run.y = foal.y; T.run.in = ''; tick(T);
   at(T, 'ring'); T.run.t = T.DUSK + 1; tick(T);
   ok(T.run.dead, 'walking into an ambient site while following kills');
+}
+
+// ---------- the grip rule ----------
+// Hold is grip: pressing what is yours gives it, closing a hand on what is
+// not keeps it. Two sites carry it so it reads as a rule, not an exception.
+group('grip');
+{
+  const T = load();
+  const foal = T.SITES.find(s => s.id === 'foal');
+  const pond = T.SITES.find(s => s.id === 'pond');
+
+  begin(T); T.act(at(T, 'dandelion'), 0);
+  ok(!T.run.dead && T.run.blown, 'blowing the dandelion is safe and spends it');
+  T.act(at(T, 'dandelion'), 0);
+  ok(!T.run.dead, 'the bare stalk is safe to blow again');
+  T.act(at(T, 'dandelion'), 1);
+  ok(!T.run.dead, 'there is nothing left on the bare stalk to keep');
+  T.newRun();
+  ok(!T.run.blown, 'the dandelion is whole again after a respawn');
+
+  begin(T); T.act(at(T, 'dandelion'), 1);
+  ok(T.run.dead && /What you keep, the meadow keeps/.test(T.run.dead), 'keeping the dandelion kills');
+  ok(T.meta.journal.includes('Closed hands are kept.'), 'keeping is journalled');
+
+  const following = () => {
+    begin(T);
+    T.act(at(T, 'pond'), 1);
+    T.run.x = foal.x; T.run.y = foal.y; T.run.in = ''; tick(T);
+  };
+
+  following();
+  ok(pond.tap === 'let it go' && pond.hold === 'keep it close', 'the pond offers the foal verbs while it follows');
+  T.act(at(T, 'pond'), 1);
+  ok(T.run.dead && /What you keep, the meadow keeps/.test(T.run.dead), 'keeping the foal close at the pond kills');
+
+  following(); T.act(at(T, 'pond'), 0);
+  ok(!T.run.dead && T.run.bands.green && !T.run.foal, 'letting the foal go at the pond sets green');
+
+  begin(T);
+  ok(pond.tap === 'drink' && pond.hold === 'kneel', 'the pond offers its own verbs otherwise');
+
+  following(); T.act(at(T, 'dandelion'), 0);
+  ok(T.run.dead && /same price twice/.test(T.run.dead), 'the foal rule covers the dandelion');
 }
 
 // ---------- the gate and both endings ----------
@@ -169,7 +255,7 @@ group('endings');
     T.act(at(T, 'pond'), 1);                        // blue
     const f = T.SITES.find(s => s.id === 'foal');
     T.run.x = f.x; T.run.y = f.y; T.run.in = ''; tick(T);
-    T.act(at(T, 'pond'), 1);                        // green
+    T.act(at(T, 'pond'), 0);                        // green: let it go
     T.run.t = T.DUSK + 1;
     T.act(at(T, 'ring'), 1);                        // yellow
     if (withName) T.act(at(T, 'ring'), 1);          // the name
@@ -184,6 +270,7 @@ group('endings');
   ok(T.setBands() === 7, 'all seven bands set at the gate');
   T.act(T.SITES.find(s => s.id === 'gate'), 0);
   ok(r.end === 1 && T.scene === 2, 'entering the gate gives the standard ending');
+  ok(r.t === 0, 'entering the gate restarts the clock the ending rainbow counts on');
 
   r = six(T, true);
   ok(r.name, 'the true name is held');
@@ -195,6 +282,38 @@ group('endings');
   at(T, 'gate'); tick(T);
   T.act(T.SITES.find(s => s.id === 'gate'), 1);
   ok(r.end === 1, 'speaking without the name still gives the standard ending');
+}
+
+// ---------- the full name and the third ending ----------
+// Two returns to the ring after it stopped being dangerous: at dusk the name,
+// in the dark the rest of it. Knowledge only - no item gates the ending.
+group('the full name');
+{
+  const T = load();
+  const ring = () => T.act(at(T, 'ring'), 1);
+
+  begin(T, T.DUSK + 1); ring(); T.run.t = T.DARK + 1; ring();
+  ok(T.run.bands.yellow && !T.run.name && /no light/.test(T.msg), 'in the dark a name never read cannot be found');
+
+  begin(T, T.DUSK + 1); ring(); ring(); ring();
+  ok(T.run.name === 1, 'at dusk the name stays the name');
+  T.run.t = T.DARK + 1; ring();
+  ok(T.run.name === 2 && /runs on/.test(T.msg), 'in the dark the name runs longer');
+  ok(T.meta.journal.includes('By touch, the name under the face runs longer.'), 'the longer name is journalled');
+  ring();
+  ok(T.run.name === 2, 'the full name stays found');
+
+  const gate = T.SITES.find(s => s.id === 'gate');
+  for (const [name, held, end] of [[2, 1, 3], [1, 1, 2], [0, 1, 1], [2, 0, 1]]) {
+    begin(T); T.run.name = name; gate.act(held);
+    ok(T.run.end === end, `gate: name ${name}, ${held ? 'speak' : 'enter'} gives ending ${end}`);
+  }
+
+  let threw = '';
+  try { T.setScene(2); T.run.end = 3; T.run.t = 9; T.draw() } catch (e) { threw = e.message }
+  ok(!threw, 'the third ending draws: ' + threw);
+  const n = T.lines(T.ENDINGS[2], 250, 7), top = 150 - n * 5;
+  ok(top > 30 && top + n * 10 < 282, 'the third ending fits between the top and the title');
 }
 
 // ---------- the state boundary (DESIGN.md s5) ----------
@@ -213,6 +332,38 @@ group('state boundary');
 
   // No third scope, no new meta field. (DESIGN.md s5)
   ok(Object.keys(T.meta).sort().join() === 'deaths,journal', 'meta holds exactly journal and deaths');
+}
+
+// ---------- respawn (DESIGN.md s2: wake seconds from where you failed) ----------
+// Only the position carries. Bands and the clock still reset - keeping either
+// would be a checkpoint, which CONTENT.md s6 forbids.
+group('respawn');
+{
+  const T = load();
+  const key = k => T.onkeydown({ key: k, preventDefault() {} });
+  const S = id => T.SITES.find(s => s.id === id);
+  const dist = s => Math.hypot(T.run.x - s.x, T.run.y - s.y);
+  const atStone = () => Math.hypot(T.run.x - 176, T.run.y - 274) < 1;
+
+  begin(T, 20); T.act(at(T, 'bramble'), 0); key('x');
+  ok(!T.run.dead && dist(S('bramble')) < 1, 'you wake where the bramble took you, not at the stone');
+  ok(T.run.t === 0 && !T.run.bands.red, 'the clock and the bands still reset');
+
+  const ring = S('ring');
+  begin(T, 0); T.run.x = ring.x - 25; T.run.y = ring.y; tick(T);
+  ok(T.run.dead, '(setup) the ring at noon killed');
+  key('x'); tick(T);
+  ok(!T.run.dead && dist(ring) >= ring.r && !atStone(), 'waking by the ring at noon puts you just outside it');
+
+  begin(T); T.run.x = 160; T.run.y = 50; tick(T);
+  ok(T.run.dead, '(setup) the gate killed from above');
+  key('x'); tick(T);
+  ok(!T.run.dead && atStone(), 'with no room to push out of the gate, you wake at the stone');
+
+  begin(T, T.CLOSE - 0.01); T.run.x = 300; T.run.y = 300; tick(T);
+  ok(T.run.dead && /Dark/.test(T.run.dead), '(setup) the dark closed');
+  key('x');
+  ok(!T.run.dead && T.run.x === 300 && T.run.y === 300, 'dying on open grass wakes you on that spot');
 }
 
 // ---------- layout: R1, and unambiguous sites ----------
@@ -293,6 +444,60 @@ group('input');
   ok(!T.run.dead && !T.run.bands.red, 'a short still press has not fired either verb yet');
 }
 
+// ---------- facing ----------
+group('facing');
+{
+  const T = load();
+  begin(T); T.keys.a = 1; tick(T); T.keys.a = 0;
+  ok(T.face === -1, 'walking left faces left');
+  T.keys.w = 1; tick(T); T.keys.w = 0;
+  ok(T.face === -1, 'walking straight up keeps the facing');
+  T.keys.d = 1; tick(T); T.keys.d = 0;
+  ok(T.face === 1, 'walking right faces right');
+}
+
+// ---------- the journal cue ----------
+// Nothing told a player J did anything, and most lines are written under the
+// death overlay. The HUD label stays dark from a new line until it is read.
+group('journal cue');
+{
+  const T = load();
+  begin(T); T.act(at(T, 'stone'), 0);
+  ok(T.unread, 'a new journal line marks the journal unread');
+  T.setJournal(1); T.draw(); T.setJournal(0);
+  ok(!T.unread, 'opening the journal clears it');
+  T.act(at(T, 'stone'), 0);
+  ok(!T.unread, 'a line already remembered does not mark it again');
+}
+
+// ---------- a press belongs to its site ----------
+// holdT used to reset only on release, so a partial hold started at one site
+// finished at the next with no fresh press. Verified A/B on 2026-09-09: the
+// same 0.25 s at the hollow killed only after 0.30 s spent at the bramble.
+group('hold ownership');
+{
+  const T = load();
+  const up = k => T.onkeyup({ key: k });
+  // 0.30 s at the bramble - short of HOLD - then carry the key to the hollow
+  const carry = () => {
+    begin(T); at(T, 'bramble');
+    T.keys.e = 1; tick(T, 0.05, 6);
+    at(T, 'hollow');
+  };
+
+  carry(); tick(T, 0.05, 5);
+  ok(!T.run.dead, 'a partial hold does not finish at the next site');
+
+  carry(); tick(T); up('e');
+  ok(!T.run.dead, 'releasing after walking away is not a tap at the new site');
+
+  tick(T);                              // one frame with the key up
+  T.run.berry = 1;
+  T.keys.e = 1; tick(T, 0.05, Math.ceil(T.HOLD / 0.05) + 1);
+  ok(!T.run.dead && T.run.bands.orange, 'a fresh press after release works as normal');
+  T.keys.e = 0; tick(T);
+}
+
 // ---------- audio ----------
 group('audio');
 {
@@ -309,6 +514,31 @@ group('audio');
   ok(!threw, 'audio never throws: ' + threw);
 }
 
+// ---------- ambience ----------
+// Asserts what the game asks the audio graph for, not what a speaker plays.
+group('ambience');
+{
+  const T = load();
+  const drone = () => T.hum[0][1].gain.v, bees = () => T.hum[1][1].gain.v;
+
+  begin(T, 0); T.ambience(); const noon = drone();
+  T.run.t = T.DUSK + 1; T.ambience(); const dusk = drone();
+  T.run.t = T.DARK + 1; T.ambience(); const dark = drone();
+  ok(noon > dusk && dusk > dark && dark > 0, 'the drone falls with the hour');
+
+  begin(T); at(T, 'hollow'); T.ambience(); const near = bees();
+  at(T, 'stone'); T.ambience(); const far = bees();
+  ok(near > 0 && far === 0, 'bees are heard at the hollow and not at the stone');
+
+  begin(T); T.run.dead = 'x'; T.ambience();
+  ok(drone() === 0 && bees() === 0, 'the meadow is silent under the death overlay');
+
+  begin(T); at(T, 'pond'); T.keys.e = 1; tick(T, 0.05, 3); T.ambience();
+  ok(drone() === 0 && !T.run.dead, 'the drone drops out while kneeling at the pond');
+  T.keys.e = 0; tick(T); T.ambience();
+  ok(drone() > 0, 'and returns when you stand');
+}
+
 // ---------- prose rules (CONTENT.md s1) ----------
 group('prose');
 {
@@ -317,9 +547,9 @@ group('prose');
   for (const s of T.SITES) {
     for (const held of [0, 1]) {
       for (let i = 0; i < 3; i++) {
-        begin(T); T.run.berry = i === 2 ? 1 : 0; T.run.t = i ? T.DUSK + 1 : 0;
+        begin(T); T.run.berry = T.run.foal = i === 2 ? 1 : 0; T.run.t = [0, T.DUSK + 1, T.DARK + 1][i];
         lines.push(String(s.act(held) || ''));
-        if (s.near) { begin(T); T.run.t = i ? T.DUSK + 1 : 0; lines.push(String(s.near() || '')) }
+        if (s.near) { begin(T); T.run.t = [0, T.DUSK + 1, T.DARK + 1][i]; lines.push(String(s.near() || '')) }
       }
     }
   }

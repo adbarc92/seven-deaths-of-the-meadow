@@ -49,9 +49,18 @@ records why.
 | tap (first) | You read the carving aloud. Somewhere behind the light, something agrees. |
 | tap (repeat) | The same six words. They have not changed. |
 | journal | The stone is carved: GIVE, DO NOT TAKE. |
+| hold, in the dark | In the dark the carving is only grooves. Under it your fingers find a second line: WHAT YOU KEEP, THE MEADOW KEEPS. |
+| journal | The stone, by touch: WHAT YOU KEEP, THE MEADOW KEEPS. |
 
-The carving is the tutorial. Tap is take, hold is give — the stone says so in
+The carving is the tutorial. Hold is the deliberate act and tap the quick
+one, and neither is safe by itself: pressing what is yours gives it, closing
+a hand on what is not keeps it, and keeping is taking. The stone says so in
 six words and nothing else in the game ever mentions the controls.
+
+The second line exists only in the dark and only by touch. It is the grip
+deaths' own sentence, carved — so a player who has died that way finds the
+stone said it all along. The code builds both from one string so they can
+never drift apart.
 
 ### The bramble — red
 
@@ -84,6 +93,9 @@ six words and nothing else in the game ever mentions the controls.
 | journal | They turn toward the brightest thing. |
 | journal | At noon nothing outshines the ring. |
 | journal | Under the tallest face, a name, written small. |
+| hold in the dark, yellow set, no name | Under the tallest face there is writing, and no light to read it by. |
+| hold in the dark, name found | In the dark the writing is only grooves. The name runs on past where the letters stopped. You do not say it yet. → **sets the full name** |
+| journal | By touch, the name under the face runs longer. |
 
 The third journal line is written against section 1 rather than quoted from
 the original draft: without it the one replay hook in the game is left to the
@@ -93,6 +105,10 @@ to prevent. Ten words, observational, no causation.
 The second dusk visit is the only optional content in the game and the only
 route to the second ending. It is deliberately gated on *going back to a place
 after it stopped being dangerous* — a thing almost nobody does the first time.
+
+A third visit, in the dark, is the only route to the third ending. The name
+read at dusk is what makes the grooves legible; without it there is writing
+and no light.
 
 ### The pond — blue
 
@@ -109,10 +125,27 @@ after it stopped being dangerous* — a thing almost nobody does the first time.
 |---|---|
 | approach | The foal falls in behind you. It does not seem to be deciding anything. |
 | any other site while following | **DEATH** — The foal followed you into it. The meadow charges the same price twice. |
-| at the pond | The foal drinks where you could not, and is not taken. It looks at you until you understand it was never the one in danger. |
+| at the pond, tap | The foal drinks where you could not, and is not taken. It looks at you until you understand it was never the one in danger. |
+| at the pond, hold | **DEATH** — You kept it close at the water. What you keep, the meadow keeps. |
 | journal | The foal follows. |
 | journal | It drank and was not taken. |
 | journal | The meadow charges the same price twice. |
+| journal | Closed hands are kept. |
+
+### The dandelion — no band
+
+| Trigger | Line |
+|---|---|
+| tap | You blow once. The seeds go up, and nothing is asked for them. |
+| tap or hold, once blown | The stalk is bare. There is nothing left on it to give. |
+| hold | **DEATH** — You closed your hand around it. What you keep, the meadow keeps. |
+| journal | The seeds went. Nothing followed them back. |
+| journal | Closed hands are kept. |
+
+Both grip deaths end on the same sentence, the way the foal's two deaths
+share "the meadow charges the same price twice." One inverted site is an
+exception; two sites saying the same thing is a rule the player can induce.
+"Closed hands are kept" answers the bramble's "Open hands are taken whole."
 
 ### The gate — violet
 
@@ -155,6 +188,22 @@ The true ending's job is to recontextualize every death as a request rather
 than a trap. Do not soften it, do not add a coda, do not add a credits crawl
 beyond the title and author line.
 
+**Whole** — speaking the full name, found by touch in the dark:
+
+> You say the whole name, the part written small and the part you found by touch.
+> The last of it is yours.
+> Seven colors come apart into one, and the one is not waiting on the other
+> side of the gate.
+> Every price the meadow took from you, it was keeping for this.
+> You walk out of the meadow whole, and it goes with you.
+
+**First draft — open for revision** (tracked in docs/STATUS.md). Its job is
+to go one step past the true ending without undercutting it: the true ending
+says the thing was asking to be put back together; this one says the player
+was one of the pieces, so every death and "what you keep, the meadow keeps"
+becomes the meadow holding parts of you for this moment. "Whole" echoes the
+standard ending on purpose.
+
 ---
 
 ## 5. UI strings
@@ -171,12 +220,13 @@ Site verbs for the prompt bar:
 
 | Site | tap | hold |
 |---|---|---|
-| stone | read | read aloud |
+| stone | read | read aloud (in the dark: trace it) |
 | bramble | reach in | press a thorn |
 | hollow | take honey | set something down |
 | ring | walk in | walk the ring |
-| pond | drink | kneel |
+| pond | drink (with the foal: let it go) | kneel (with the foal: keep it close) |
 | foal | touch | wait |
+| dandelion | blow | keep it |
 | gate | enter | speak |
 
 ---

@@ -124,12 +124,45 @@ const [crown, refTop, bowl, refBot] =
 // Unset bands are the only thing telling the player there are seven of
 // anything; white on the pale sky made them invisible at zero bands.
 await run(() => { const T = window.__T; T.newRun(); T.draw() });
-const [slot, sky] = await probe([[103, 12], [40, 12]]);
+const [slot, sky, sunPx, sunSky] = await probe([[103, 12], [40, 12], [20, 34], [60, 34]]);
+// The unicorn is side-on and faces the way it walks, so its head is ahead of
+// the body and up. The old drawing stacked the head on top, facing out.
+// (+10, -7) is inside the head only: clear of the neck's round cap at (7, -7)
+// and below the horn, so a head moved elsewhere cannot pass on the neck.
+const white = p => p.slice(0, 3).every(v => v > 235);
+await run(() => { const T = window.__T; T.newRun(); T.run.x = 230; T.run.y = 290; T.setFace(1); T.draw() });
+const [aheadR, behindR] = await probe([[240, 283], [220, 283]]);
+await run(() => { const T = window.__T; T.setFace(-1); T.draw() });
+const [aheadL, behindL] = await probe([[220, 283], [240, 283]]);
+await run(() => { const T = window.__T; T.setFace(1); T.newRun(); T.draw() });
+// The standard ending could not be told from a loss. The rainbow is the win:
+// seven bands on the standard ending, one pale arc on the true one. A large
+// run.t shows the finished picture rather than bands still arriving.
+await run(() => { const T = window.__T; T.setScene(2); T.run.end = 1; T.run.t = 9; T.draw() });
+const [bow, bowBg] = await probe([[160, 28], [20, 28]]);
+await run(() => { const T = window.__T; T.run.end = 2; T.draw() });
+const [one, half] = await probe([[160, 40], [160, 98]]);
+// the third ending closes the seven into a whole ring; its lower edge is
+// somewhere the true ending's half-arc never reaches
+await run(() => { const T = window.__T; T.run.end = 3; T.draw() });
+const [whole] = await probe([[160, 98]]);
+const fit3 = await run(() => { const T = window.__T, n = T.lines(T.ENDINGS[2], 250, 7); return { n, top: 150 - n * 5 } });
+await run(() => { const T = window.__T; T.setScene(1); T.newRun(); T.draw() });
 
 const checks = [
   [!near(crown, refTop, 8), 'gate arch is painted across the top of its circle'],
   [near(bowl, refBot, 8), 'gate arch is open underneath, not a bowl'],
   [!near(slot, sky, 10), 'unset rainbow slots read against the sky'],
+  [!near(sunPx, sunSky, 20), 'the sun is drawn in the noon sky'],
+  [white(aheadR) && !white(behindR) && white(aheadL) && !white(behindL),
+    'the unicorn is side-on and faces the way it walks'],
+  [!near(bow, bowBg, 20), 'the standard ending draws the rainbow'],
+  [one.slice(0, 3).every(v => v > 200), 'the true ending draws the seven as one pale arc'],
+  [whole.slice(0, 3).every(v => v > 200) && !half.slice(0, 3).every(v => v > 200),
+    'the third ending closes the seven into a whole ring'],
+  // ring's lower edge is y 102; 6 px of glyph ascent above the first baseline
+  [fit3.top - 6 > 102 && fit3.top + fit3.n * 10 < 282,
+    `the third ending clears the ring and the title (${fit3.n} lines)`],
 ];
 for (const [good, name] of checks) {
   console.log((good ? '  ok   ' : '  FAIL ') + name);
@@ -190,13 +223,14 @@ await new Promise(r => setTimeout(r, 250));
 const deadBright = await meanBright();
 await ship.screenshot({ path: `${OUT}/13-shipped-death.png` });
 
+const shipped = checks.length;
 checks.push(
   [playBright > 12, 'the shipped zip renders something on load'],
   [titleBar - playBar > 40, 'a key press leaves the title and the prompt bar appears'],
   [deadBright < playBright - 25, 'walking into the gate unfinished kills, and the screen dims'],
   [!shipErrors.length, 'the shipped bundle runs clean: ' + shipErrors.join(' | ')],
 );
-for (const [good, name] of checks.slice(3)) {
+for (const [good, name] of checks.slice(shipped)) {
   console.log((good ? '  ok   ' : '  FAIL ') + name);
   if (!good) errors.push('shipped: ' + name);
 }
@@ -225,8 +259,8 @@ if (!FIREFOX) {
     const T = window.__T;
     T.setScene(2); T.run.end = 2; T.draw();
     const t = 'You say the name written under the tallest face.\nSeven colors come apart into one.\nThe thing on the other side was never a unicorn. It was something divided seven ways a long time ago, and every rule you learned was it asking, politely, to be put back together.\nIt does not need the meadow now.\nNeither, it turns out, do you.';
-    const n = T.lines(t, 250, 7);
-    return { n, top: 150 - n * 5, bottom: 150 + n * 5 };
+    const n = T.lines(t, 250, 7), n3 = T.lines(T.ENDINGS[2], 250, 7);
+    return { n, top: 150 - n * 5, bottom: 150 + n * 5, n3, top3: 150 - n3 * 5 };
   });
   await fp.screenshot({ path: `${OUT}/14-firefox-ending.png` });
   await fp.evaluate(() => { const T = window.__T; T.setScene(1); T.newRun(); T.draw() });
@@ -236,6 +270,8 @@ if (!FIREFOX) {
     [!ffErrors.length, 'Firefox runs it clean: ' + ffErrors.join(' | ')],
     [fit.top > 30, `the true ending clears the top in Firefox (${fit.n} lines)`],
     [fit.bottom < 282, 'the true ending clears the title line in Firefox'],
+    [fit.top3 - 6 > 102 && fit.top3 + fit.n3 * 10 < 282,
+      `the third ending clears the ring and the title in Firefox (${fit.n3} lines)`],
   ];
   for (const [good, name] of ffChecks) {
     console.log((good ? '  ok   ' : '  FAIL ') + name);

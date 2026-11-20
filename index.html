@@ -36,33 +36,63 @@ const TIME = [[0,.75],['rgba(90,60,110,.28)',.45],['rgba(18,15,24,.72)',.15]];
 // fetching it has to happen inside the run that spends it. (DESIGN.md s5)
 let meta = { journal: [], deaths: 0 };
 let run, scene = 0;            // 0 title, 1 meadow, 2 ending
+// Display state, like showJournal - not meta. The HUD label stays dark from a
+// new line until the journal is next opened.
+let unread = 0;
+let face = 1;                  // display state too: 1 faces right, -1 left
 
-function newRun() {
-  run = { x: 176, y: 274, bands: {}, berry: 0, name: 0, foal: 0, fx: 200, fy: 170,
-          t: 0, dead: 0, end: 0, in: '' };
+function newRun(x = 176, y = 274) {
+  run = { x, y, bands: {}, berry: 0, name: 0, foal: 0, fx: 200, fy: 170,
+          t: 0, dead: 0, end: 0, in: '', blown: 0 };
+  // Wake where you failed (DESIGN.md s2) - but never inside a site that kills
+  // on arrival. Pushed out on the side you came from, or failing that, the stone.
+  for (const s of SITES) if (s.k) {
+    const d = here(s), R = s.r + 8;
+    if (d < R) {
+      run.x = Math.max(10, Math.min(310, s.x + (x - s.x) / (d || 1) * R));
+      run.y = Math.max(50, Math.min(310, s.y + (y - s.y) / (d || 1) * R));
+      if (here(s) < s.r + 4) { run.x = 176; run.y = 274 }
+    }
+  }
   for (const k in keys) keys[k] = 0;
   holdT = 0; fired = 0; msg = ''; msgT = 0; lastBands = 0; touch = null;
 }
 
-const note = s => { if (!meta.journal.includes(s)) meta.journal.push(s) };
+const note = s => { if (!meta.journal.includes(s)) { meta.journal.push(s); unread = 1 } };
 const die = s => {
   if (!run.dead) { run.dead = s; meta.deaths++; tone(98, 1.4, .2, 'triangle') }
   return run.dead;
 };
 const phase = () => run.t < DUSK ? 0 : run.t < DARK ? 1 : 2;
+// The clock's position, drawn: the sun sinks from top left toward the right
+// horizon and is gone at dark. Dusk falls just before it reaches the gate.
+const sun = () => { const p = Math.min(1, run.t / DARK); return [20 + 280 * p, 34 + 22 * p] };
 const setBands = () => BANDS.reduce((n, b) => n + (run.bands[b] ? 1 : 0), 0);
 
 // The foal follows you into whatever you touch next, and the meadow charges
 // the same price twice. Applies to every site but the pond.
 const FOALDEATH = 'The foal followed you into it. The meadow charges the same price twice.';
 
+// Hold is grip. Pressing what is yours gives it; closing a hand on what is
+// not keeps it, and the meadow counts keeping as taking. Two sites end on
+// the same sentence so it reads as a rule rather than an exception.
+const KEPT = ' What you keep, the meadow keeps.';
+const keep = s => { note('Closed hands are kept.'); return die(s + KEPT) };
+
 // ---------- sites ----------
 // Hardcoded on purpose. Five of these is fewer than the abstraction that
 // would describe them. See DESIGN.md section 9.
 const SITES = [
   {
-    id: 'stone', x: 160, y: 262, r: 16, tap: 'read', hold: 'read aloud',
-    act() {
+    id: 'stone', x: 160, y: 262, r: 16, tap: 'read',
+    // In the dark the carving is only grooves, and a hold traces a second
+    // line: the sentence both grip deaths end on. It sets nothing.
+    get hold() { return phase() > 1 ? 'trace it' : 'read aloud' },
+    act(held) {
+      if (held && phase() > 1) {
+        note('The stone, by touch:' + KEPT.toUpperCase());
+        return 'In the dark the carving is only grooves. Under it your fingers find a second line:' + KEPT.toUpperCase();
+      }
       note('The stone is carved: GIVE, DO NOT TAKE.');
       if (run.bands.indigo) return 'The same six words. They have not changed.';
       run.bands.indigo = 1;
@@ -113,24 +143,35 @@ const SITES = [
         note('At noon nothing outshines the ring.');
         return 'At dusk the faces are all turned down. You walk the ring unlit and unnoticed.';
       }
-      // the only optional content in the game, and the only route to the
-      // second ending: coming back to a place after it stopped being dangerous
+      // Optional content, and the only route to the second and third endings:
+      // coming back after it stopped being dangerous - and then again in the
+      // dark, where the name found at dusk runs on in the grooves.
+      if (phase() > 1) {
+        if (!run.name) return 'Under the tallest face there is writing, and no light to read it by.';
+        run.name = 2;
+        note('By touch, the name under the face runs longer.');
+        return 'In the dark the writing is only grooves. The name runs on past where the letters stopped. You do not say it yet.';
+      }
       run.name = 1;
       note('Under the tallest face, a name, written small.');
       return 'Under the tallest face, written small, there is a name. You do not say it yet.';
     }
   },
   {
-    id: 'pond', x: 250, y: 108, r: 26, tap: 'drink', hold: 'kneel',
+    id: 'pond', x: 250, y: 108, r: 26,
+    // with the foal behind you, the verbs are about the foal, not the water
+    get tap() { return run.foal ? 'let it go' : 'drink' },
+    get hold() { return run.foal ? 'keep it close' : 'kneel' },
     act(held) {
-      if (!held) {
-        note('Reflections keep what they take.');
-        return die('You drank. The water kept the face that leaned over it, and did not give it back.');
-      }
       if (run.foal) {
+        if (held) return keep('You kept it close at the water.');
         run.foal = 0; run.bands.green = 1;
         note('It drank and was not taken.');
         return 'The foal drinks where you could not, and is not taken. It looks at you until you understand it was never the one in danger.';
+      }
+      if (!held) {
+        note('Reflections keep what they take.');
+        return die('You drank. The water kept the face that leaned over it, and did not give it back.');
       }
       run.bands.blue = 1;
       note('The pond only takes what it can see.');
@@ -149,7 +190,8 @@ const SITES = [
       return 'The seventh band arrives on its own.';
     },
     act(held) {
-      run.end = held && run.name ? 2 : 1; scene = 2;
+      // run.t restarts so the ending's bands can land on these notes
+      run.end = held ? run.name + 1 : 1; scene = 2; run.t = 0;   // 1 standard, 2 true, 3 whole
       SCALE.forEach((f, i) => setTimeout(() => tone(f, 1.2, .13), i * 190));
     }
   },
@@ -158,6 +200,18 @@ const SITES = [
     // unattemptable before blue without ever refusing the player anything.
     id: 'foal', x: 200, y: 170, r: 14, tap: 'touch', hold: 'wait',
     near: () => follow(), act: () => follow()
+  },
+  {
+    // Somewhere to learn the grip rule before the foal makes it matter.
+    // No band: nothing depends on it. Kept after the foal so SITES[6] holds.
+    id: 'dandelion', x: 124, y: 172, r: 14, tap: 'blow', hold: 'keep it',
+    act(held) {
+      if (run.blown) return 'The stalk is bare. There is nothing left on it to give.';
+      if (held) return keep('You closed your hand around it.');
+      run.blown = 1;
+      note('The seeds went. Nothing followed them back.');
+      return 'You blow once. The seeds go up, and nothing is asked for them.';
+    }
   }
 ];
 
@@ -199,16 +253,40 @@ function tone(f, d, vol, type) {
 const SCALE = [523, 587, 659, 784, 880, 1047, 1175];
 const chime = i => tone(SCALE[i], .5, .16);
 
+// The meadow between events: a drone that falls with the hour, bees near the
+// hollow, and silence while you kneel at the pond with your eyes shut. Only
+// run once the meadow has been reached, which takes a gesture - so the
+// context is never created early and left suspended.
+let hum;
+function ambience() {
+  try {
+    AC = AC || new (window.AudioContext || window.webkitAudioContext)();
+    if (!hum) hum = [['sine', 330], ['triangle', 220]].map(([type, f]) => {
+      const o = AC.createOscillator(), g = AC.createGain();
+      o.type = type; o.frequency.value = f; g.gain.value = 0;
+      o.connect(g); g.connect(AC.destination); o.start();
+      return [o, g];
+    });
+    const t = AC.currentTime, p = phase(), live = scene == 1 && !run.dead;
+    const kneel = holdT && holdS && holdS.id == 'pond';
+    hum[0][0].frequency.setTargetAtTime([330, 247, 165][p], t, 1);
+    hum[0][1].gain.setTargetAtTime(live && !kneel ? [.03, .02, .012][p] : 0, t, .3);
+    hum[1][0].frequency.setTargetAtTime(220 + Math.sin(run.t * 40) * 8, t, .02);
+    // SITES[2] is the hollow
+    hum[1][1].gain.setTargetAtTime(live ? Math.max(0, 1 - here(SITES[2]) / 80) * .02 : 0, t, .1);
+  } catch (e) {}
+}
+
 // ---------- input ----------
 const keys = {};
-let holdT = 0, fired = 0, msg = '', msgT = 0, showJournal = 0;
+let holdT = 0, fired = 0, holdS, msg = '', msgT = 0, showJournal = 0;
 let touch = null, touched = 0, lastBands = 0;
 const MOVED = 12;              // logical px before a touch counts as walking
 
 function anyKey() {
   if (scene == 2) { scene = 0; return 1 }
   if (scene == 0) { scene = 1; newRun(); return 1 }
-  if (run.dead) { newRun(); return 1 }
+  if (run.dead) { newRun(run.x, run.y); return 1 }
   return 0;
 }
 
@@ -289,6 +367,8 @@ let last = 0;
 function frame(now) {
   const dt = Math.min(.05, (now - last) / 1000); last = now;
   if (scene == 1 && !run.dead) update(dt);
+  else if (scene == 2) run.t += dt;
+  if (AC || scene == 1) ambience();
   draw();
   requestAnimationFrame(frame);
 }
@@ -312,6 +392,7 @@ function update(dt) {
     const d = Math.hypot(touch.dx, touch.dy) || 1;
     mx = touch.dx / d; my = touch.dy / d;
   }
+  if (mx) face = mx > 0 ? 1 : -1;
   run.x = Math.max(10, Math.min(310, run.x + mx * sp));
   run.y = Math.max(50, Math.min(310, run.y + my * sp));
 
@@ -337,10 +418,14 @@ function update(dt) {
 
   const site = nearest();
   const down = keys.e || keys[' '] || (touch && !touch.moved);
-  if (down && site) {
-    holdT += dt;
-    if (holdT >= HOLD && !fired) { fired = 1; act(site, 1) }
-  } else if (!down) { holdT = 0; fired = 0 }
+  // A press belongs to the site it began at. Leaving spends it: otherwise a
+  // partial hold finishes at the next site, and a release there is a tap.
+  if (holdT && site != holdS) { holdT = 0; fired = 1 }
+  if (!down) { holdT = 0; fired = 0 }
+  else if (site && !fired) {
+    holdS = site; holdT += dt;
+    if (holdT >= HOLD) { fired = 1; act(site, 1) }
+  }
 
   // One place to notice a band was set, whatever path set it.
   const n = setBands();
@@ -374,6 +459,13 @@ function scenery() {
   const sky = X.createLinearGradient(0, 0, 0, 60);
   sky.addColorStop(0, '#ffe9f3'); sky.addColorStop(1, '#cfeecb');
   X.fillStyle = sky; X.fillRect(0, 0, 320, 60);
+  if (phase() < 2) {
+    const [sx, sy] = sun();
+    X.fillStyle = 'rgba(255,255,255,.35)';
+    X.beginPath(); X.arc(sx, sy, 11, 0, 7); X.fill();
+    X.fillStyle = '#ffe066';
+    X.beginPath(); X.arc(sx, sy, 6, 0, 7); X.fill();
+  }
 
   X.globalAlpha = fa;
   for (const f of flowers) {
@@ -388,6 +480,7 @@ function scenery() {
   drawBramble(58, 214);
   drawHollow(262, 210);
   drawStone(160, 262);
+  drawDandelion(124, 172);
   if (run.bands.blue) drawUnicorn(run.fx, run.fy, .62, 0);
   drawUnicorn(run.x, run.y, 1, 1);
 
@@ -431,7 +524,7 @@ function hud() {
     X.fillStyle = run.bands[BANDS[i]] ? HUES[i] : 'rgba(60,40,70,.22)';
     X.fillRect(96 + i * 18, 10, 15, 4);
   }
-  X.fillStyle = 'rgba(60,40,70,.5)'; X.font = '6px sans-serif';
+  X.fillStyle = 'rgba(60,40,70,' + (unread ? .95 : .5) + ')'; X.font = '6px sans-serif';
   X.fillText(meta.deaths + ' deaths   ·   ' + (touched ? '' : '[J] ') +
     'what you remember', 160, 26);
 }
@@ -451,11 +544,30 @@ function title() {
   X.fillText('it is a nice day. any key.', 160, 198);
 }
 
+// CONTENT.md s4, indexed by run.end - 1. The third is a first draft.
+const ENDINGS = [
+  'The unicorn takes the six colors and gives you the seventh.\nYou leave the meadow whole, having paid nothing you were not asked for.\nIt watches you the entire way out. It does not look away.',
+  'You say the name written under the tallest face.\nSeven colors come apart into one.\nThe thing on the other side was never a unicorn. It was something divided seven ways a long time ago, and every rule you learned was it asking, politely, to be put back together.\nIt does not need the meadow now.\nNeither, it turns out, do you.',
+  'You say the whole name, the part written small and the part you found by touch.\nThe last of it is yours.\nSeven colors come apart into one, and the one is not waiting on the other side of the gate.\nEvery price the meadow took from you, it was keeping for this.\nYou walk out of the meadow whole, and it goes with you.'
+];
+
 function ending() {
   X.fillStyle = '#1a1522'; X.fillRect(0, 0, 320, 320);
-  const t = run.end == 2
-    ? 'You say the name written under the tallest face.\nSeven colors come apart into one.\nThe thing on the other side was never a unicorn. It was something divided seven ways a long time ago, and every rule you learned was it asking, politely, to be put back together.\nIt does not need the meadow now.\nNeither, it turns out, do you.'
-    : 'The unicorn takes the six colors and gives you the seventh.\nYou leave the meadow whole, having paid nothing you were not asked for.\nIt watches you the entire way out. It does not look away.';
+  // The win, drawn: each band lands on its note of the gate's arpeggio. The
+  // true ending then puts the seven back together as one pale arc; the third
+  // closes them into a whole ring.
+  if (run.end > 1 && run.t > 1.6) {
+    X.strokeStyle = 'rgba(255,250,255,.85)';
+    X.beginPath();
+    if (run.end == 3) { X.lineWidth = 8; X.arc(160, 64, 34, 0, 7) }
+    else { X.lineWidth = 28; X.arc(160, 94, 54, Math.PI, 2 * Math.PI) }
+    X.stroke();
+  } else HUES.forEach((h, i) => {
+    if (run.t < i * .19) return;
+    X.strokeStyle = h; X.lineWidth = 4;
+    X.beginPath(); X.arc(160, 94, 66 - i * 4, Math.PI, 2 * Math.PI); X.stroke();
+  });
+  const t = ENDINGS[run.end - 1];
   wrap(t, 160, 150 - lines(t, 250, 7) * 5, '#e8e0ee', 7, 250);
   const g = X.createLinearGradient(90, 0, 230, 0);
   HUES.forEach((h, i) => g.addColorStop(i / 6, h));
@@ -468,6 +580,7 @@ function ending() {
 }
 
 function journal() {
+  unread = 0;                    // cleared by being seen: J and the touch HUD both land here
   X.fillStyle = '#120f18'; X.fillRect(0, 0, 320, 320);
   X.textAlign = 'left';
   X.fillStyle = '#d98cff'; X.font = '8px sans-serif';
@@ -523,6 +636,21 @@ function drawBramble(x, y) {
   for (let i = 0; i < 5; i++) {
     const a = i * 1.3;
     X.beginPath(); X.arc(x + Math.cos(a) * 14, y + Math.sin(a) * 11, 2.4, 0, 7); X.fill();
+  }
+}
+
+// One stalk and a pale puff of spokes; once blown, only the stalk. A single
+// head, where the ring is twelve, so the two never share a silhouette.
+function drawDandelion(x, y) {
+  X.strokeStyle = '#7ddb8f'; X.lineWidth = 1.4;
+  X.beginPath(); X.moveTo(x, y + 12); X.lineTo(x, y - 4); X.stroke();
+  if (run.blown) return;
+  X.fillStyle = 'rgba(255,250,255,.7)';
+  X.beginPath(); X.arc(x, y - 4, 7, 0, 7); X.fill();
+  X.strokeStyle = '#9a94a8'; X.lineWidth = .7;
+  for (let i = 0; i < 12; i++) {
+    const a = i * .524;
+    X.beginPath(); X.moveTo(x, y - 4); X.lineTo(x + Math.cos(a) * 7, y - 4 + Math.sin(a) * 7); X.stroke();
   }
 }
 
@@ -592,23 +720,29 @@ function drawUnicorn(x, y, k, horn) {
   const moving = keys.a || keys.d || keys.w || keys.s ||
     keys.arrowleft || keys.arrowright || keys.arrowup || keys.arrowdown;
   if (horn && moving) y += Math.sin(run.t * 11) * .8;
-  X.strokeStyle = '#fffaff'; X.lineWidth = 1.6 * k; X.lineCap = 'round';
-  for (let i = 0; i < 4; i++) {
-    const lx = x + (i < 2 ? -3 : 3) * k, ly = y + 3 * k;
-    X.beginPath(); X.moveTo(lx, ly); X.lineTo(lx + (i % 2 ? 1 : -1) * k, ly + 4.5 * k); X.stroke();
+  X.lineCap = 'round';
+  // Side-on, drawn facing right in local space and mirrored to face the way
+  // it last walked. One transform, so the foal is the same call at 0.62.
+  X.save();
+  X.translate(x, y); X.scale(k * face, k);
+  X.strokeStyle = X.fillStyle = '#fffaff';
+  X.lineWidth = 1.6;                                   // a back pair, a front pair
+  for (const lx of [-5, -3, 3, 5]) { X.beginPath(); X.moveTo(lx, 2); X.lineTo(lx, 8); X.stroke() }
+  X.beginPath(); X.ellipse(0, 0, 7, 4, 0, 0, 7); X.fill();            // body
+  X.lineWidth = 3.4;
+  X.beginPath(); X.moveTo(4, -1); X.lineTo(7, -7); X.stroke();          // neck
+  X.beginPath(); X.ellipse(8.5, -8, 3.4, 2.2, .45, 0, 7); X.fill();     // head, nose down
+  X.strokeStyle = '#f2d9ea'; X.lineWidth = 1.3;                        // mane and tail
+  X.beginPath(); X.moveTo(6, -10); X.quadraticCurveTo(3, -6, 3, -2); X.stroke();
+  X.beginPath(); X.moveTo(-7, -1); X.quadraticCurveTo(-11, 0, -10, 5); X.stroke();
+  if (horn) {
+    // the only place the full palette touches the player
+    const hg = X.createLinearGradient(0, -16, 0, -9);
+    hg.addColorStop(0, '#d98cff'); hg.addColorStop(1, '#ffe066');
+    X.fillStyle = hg;
+    X.beginPath(); X.moveTo(7.2, -9.5); X.lineTo(9.6, -10.2); X.lineTo(12, -16); X.fill();
   }
-  X.fillStyle = '#fffaff';
-  X.beginPath(); X.ellipse(x, y, 6 * k, 4.5 * k, 0, 0, 7); X.fill();
-  X.beginPath(); X.ellipse(x, y - 6 * k, 3.4 * k, 3.4 * k, 0, 0, 7); X.fill();
-  X.strokeStyle = '#f2d9ea'; X.lineWidth = 1.2 * k;   // mane and tail
-  X.beginPath(); X.moveTo(x + 2 * k, y - 7 * k); X.lineTo(x + 4.5 * k, y - 1 * k); X.stroke();
-  X.beginPath(); X.moveTo(x + 5.5 * k, y - 1 * k); X.lineTo(x + 8 * k, y + 3 * k); X.stroke();
-  if (!horn) return;
-  // the only place the full palette touches the player
-  const hg = X.createLinearGradient(x, y - 15, x, y - 8);
-  hg.addColorStop(0, '#d98cff'); hg.addColorStop(1, '#ffe066');
-  X.fillStyle = hg;
-  X.beginPath(); X.moveTo(x - 1.6, y - 8); X.lineTo(x + 1.6, y - 8); X.lineTo(x, y - 15); X.fill();
+  X.restore();
 }
 
 /*TEST*/
@@ -617,12 +751,13 @@ function drawUnicorn(x, y, k, horn) {
 // shipped bundle by the /*TEST*/ fence, so these cost zero bytes.
 globalThis.__T = {
   SITES, BANDS, HUES, newRun, nearest, update, act, keys, follow, selfTest, lines,
-  DUSK, DARK, CLOSE, HOLD, setBands, phase, layout, draw,
-  get run() { return run }, get meta() { return meta },
+  DUSK, DARK, CLOSE, HOLD, setBands, phase, layout, draw, sun, ambience, ENDINGS,
+  get hum() { return hum }, get face() { return face }, setFace(v) { face = v },
+  get run() { return run }, get meta() { return meta }, get unread() { return unread },
   get msg() { return msg }, get scene() { return scene }, setScene(v) { scene = v },
   get journalOpen() { return showJournal }, setJournal(v) { showJournal = v },
   get touch() { return touch }, setTouch(v) { touch = v; touched = 1 },
-  onkeydown: e => onkeydown(e), MOVED,
+  onkeydown: e => onkeydown(e), onkeyup: e => onkeyup(e), MOVED,
 };
 
 // ---------- self-check ----------
